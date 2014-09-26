@@ -54,4 +54,25 @@ TEST(HistogramTest, BenHaimAppendixA) {
 
   ASSERT_NEAR(3.275, M15.m, 0.01);
   ASSERT_NEAR(3.275, M15.y, 0.01);
+
+  std::vector<double> uniform_points = hist.Uniform(3);
+  ASSERT_EQ(2, uniform_points.size());
+  printf("-------------\n");
+  for (unsigned int i = 0; i < uniform_points.size(); ++i) {
+    printf("%f ", uniform_points[i]);
+  }
+  printf("\n");
+
+  printf("Expected # of points in each uniform region: ");
+  double p, p_prev=0;
+  for (unsigned int i = 0; i < uniform_points.size(); ++i) {
+    p = hist.Interpolate(uniform_points[i]).m;
+    printf("%f ", p - p_prev);
+    p_prev = p;
+  }
+  printf("\n");
+
+  ASSERT_NEAR(15.21, uniform_points[0], 0.02);
+  ASSERT_NEAR(28.98, uniform_points[1], 0.02);
+
 };

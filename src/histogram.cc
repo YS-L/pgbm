@@ -47,6 +47,7 @@ double trapezoid_estimate(double s, double p1, double p2, double v1, double v2) 
 Histogram::BinVal Histogram::Interpolate(double x) const {
   // TODO: assert the x in between p_min and p_max
   // TODO: cache summation in frozen mode
+  // TODO: For completeness sake, need to handle -ve and +ve infinity 
   Bin bin;
   bin.p = x;
   HistogramTypeConstIter it2 = std::upper_bound(bins_.begin(), bins_.end(), bin);
@@ -96,4 +97,48 @@ void Histogram::Trim() {
     bins_[i].val.y += bins_[j].val.m;
     bins_.erase(bins_.begin() + j);
   }
+};
+
+// Implements Algorithm 4 in Ben-Haim-10 paper
+std::vector<double> Histogram::Uniform(int N) const {
+  // N corresponds to tilde B in the paper
+  std::vector<double> results;
+  double sum_m = 0.0;
+  for (unsigned int i = 0; i < bins_.size(); ++i) {
+    sum_m += bins_[i].val.m;
+  }
+  std::vector<double> cumsums(bins_.size(), 0.0);
+  for (unsigned int i = 0; i < bins_.size(); ++i) {
+    // Special case of Sum / Interpolate where the target x is always at the
+    // center of a bin -- can be computed inplace directly
+    if (i == 0) {
+      cumsums[i] = bins_[i].val.m / 2.0;
+    }
+    else {
+      cumsums[i] = cumsums[i-1]
+                   + bins_[i-1].val.m / 2.0
+                   + bins_[i].val.m / 2.0;
+    }
+  }
+  for (unsigned int j = 1; j <= N - 1; ++j) {
+    double s = ((double)j / N) * sum_m;
+    // This is (i+1) -- the first element that is larger than s
+    std::vector<double>::iterator it = std::upper_bound(cumsums.begin(),
+                                                        cumsums.end(), s);
+    unsigned int i = it - cumsums.begin() - 1;
+    double d = s - cumsums[i];
+    double a = bins_[i+1].val.m - bins_[i].val.m;
+    double z;
+    if (std::fabs(a) > 10e-8) {
+      double b = 2.0 * bins_[i].val.m;
+      double c = -2.0 * d;
+      z = (- b + sqrt(b*b - 4*a*c)) / (2*a);
+    }
+    else {
+      z = d / bins_[i].val.m;
+    }
+    double uj = bins_[i].p + (bins_[i+1].p - bins_[i].p)*z;
+    results.push_back(uj);
+  }
+  return results;
 };
