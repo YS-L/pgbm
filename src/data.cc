@@ -32,7 +32,8 @@ int DataMatrix::Load(const char *filename) {
     buffer[strlen(buffer)-1] = '\0';
     //printf("Read line #%d\n", sample_idx);
 
-    row_data_.push_back(std::vector<FeaturePoint>());
+    SamplePoint sample_point;
+    row_data_.push_back(sample_point);
 
     char *pch;
     pch = strtok(buffer, " ");
@@ -56,7 +57,6 @@ int DataMatrix::Load(const char *filename) {
         //printf("%d: %f\n", fidx, fval);
         FeaturePoint fpoint;
         fpoint.sample_index = sample_idx;
-        fpoint.feature_index = fidx;
         fpoint.value = fval;
         if (column_data_.find(fidx) == column_data_.end()) {
           column_data_[fidx] = std::vector<FeaturePoint>();
@@ -64,7 +64,7 @@ int DataMatrix::Load(const char *filename) {
         column_data_[fidx].push_back(fpoint);
 
         // NOTE: sample_index might be redundant in row data, need SamplePoint?
-        row_data_.back().push_back(fpoint);
+        row_data_.back().features.insert(std::make_pair(fidx, fval));
       }
       pch = strtok (NULL, " ");
       count_ftoken += 1;
@@ -83,7 +83,7 @@ unsigned int DataMatrix::Dimension() {
   return column_data_.size();
 };
 
-const std::vector<DataMatrix::FeaturePoint>& DataMatrix::GetRow(unsigned int index) const {
+const DataMatrix::SamplePoint& DataMatrix::GetRow(unsigned int index) const {
   CHECK(index < row_data_.size()) << "Row index out of bound";
   return row_data_[index];
 };

@@ -11,13 +11,16 @@ public:
 
 	struct FeaturePoint {
 		int sample_index;
-		int feature_index;
 		double value;
+	};
+
+	struct SamplePoint {
+		std::map<int, double> features;
 	};
 
 	int Load(const char *filename);
 	void SetTargets(const std::vector<double>& targets);
-	const std::vector<FeaturePoint>& GetRow(unsigned int index) const;
+	const SamplePoint& GetRow(unsigned int index) const;
 	const std::vector<FeaturePoint>& GetColumn(unsigned int index) const;
 	const std::vector<double>& GetTargets() const;
 
@@ -27,7 +30,7 @@ public:
 private:
 
 	std::map<int, std::vector<FeaturePoint> > column_data_;
-	std::vector<std::vector<FeaturePoint> > row_data_;
+	std::vector<SamplePoint> row_data_;
 	std::vector<double> targets_;
 
 };

@@ -13,18 +13,9 @@ TEST(DataTest, LoadIris) {
   ASSERT_EQ(150, d.Size());
 
   auto row = d.GetRow(0);
-  ASSERT_EQ(4, row.size());
-  std::vector<int> row_findices;
-  std::vector<double> row_fvals;
-  // TODO: Test more systematically with googlemock?
-  for (unsigned int i = 0; i < row.size(); ++i) {
-    row_findices.push_back(row[i].feature_index);
-    row_fvals.push_back(row[i].value);
-  }
-  ASSERT_EQ(0, row_findices[0]);
-  ASSERT_EQ(1, row_findices[1]);
-  ASSERT_NEAR(5.1, row_fvals[0], 0.001);
-  ASSERT_NEAR(3.5, row_fvals[1], 0.001);
+  ASSERT_EQ(4, row.features.size());
+  ASSERT_NEAR(5.1, row.features.at(0), 0.001);
+  ASSERT_NEAR(3.5, row.features.at(1), 0.001);
 
   auto col = d.GetColumn(0);
   ASSERT_EQ(150, col.size());
