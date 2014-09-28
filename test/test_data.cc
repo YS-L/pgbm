@@ -9,16 +9,16 @@
 TEST(DataTest, LoadIris) {
   DataMatrix d;
   ASSERT_EQ(0, d.Load(IRIS));
-  ASSERT_EQ(4, d.Dimension());
-  ASSERT_EQ(150, d.Size());
+  ASSERT_EQ(4, (int)d.Dimension());
+  ASSERT_EQ(150, (int)d.Size());
 
   auto row = d.GetRow(0);
-  ASSERT_EQ(4, row.features.size());
+  ASSERT_EQ(4, (int)row.features.size());
   ASSERT_NEAR(5.1, row.features.at(0), 0.001);
   ASSERT_NEAR(3.5, row.features.at(1), 0.001);
 
   auto col = d.GetColumn(0);
-  ASSERT_EQ(150, col.size());
+  ASSERT_EQ(150, (int)col.size());
 
   std::vector<int> col_sindices;
   std::vector<double> col_fvals;

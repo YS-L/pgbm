@@ -5,7 +5,9 @@
 #include <cmath>
 #include <iostream>
 
-Histogram::Histogram(int num_bins): max_num_bins_(num_bins) {
+#include <glog/logging.h>
+
+Histogram::Histogram(unsigned int num_bins): max_num_bins_(num_bins) {
 };
 
 void Histogram::Update(double x, double y) {
@@ -102,6 +104,7 @@ void Histogram::Trim() {
 // Implements Algorithm 4 in Ben-Haim-10 paper
 std::vector<double> Histogram::Uniform(int N) const {
   // N corresponds to tilde B in the paper
+  CHECK(N >= 1) << "Histogram's Uniform routine requires N >= 1";
   std::vector<double> results;
   double sum_m = 0.0;
   for (unsigned int i = 0; i < bins_.size(); ++i) {
@@ -120,7 +123,7 @@ std::vector<double> Histogram::Uniform(int N) const {
                    + bins_[i].val.m / 2.0;
     }
   }
-  for (unsigned int j = 1; j <= N - 1; ++j) {
+  for (int j = 1; j <= N - 1; ++j) {
     double s = ((double)j / N) * sum_m;
     // This is (i+1) -- the first element that is larger than s
     std::vector<double>::iterator it = std::upper_bound(cumsums.begin(),

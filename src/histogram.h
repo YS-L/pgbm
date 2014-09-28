@@ -8,7 +8,7 @@ class Histogram {
 
 public:
 
-  Histogram(int num_bins);
+  Histogram(unsigned int num_bins);
 
   struct BinVal {
     double m;
@@ -43,7 +43,7 @@ private:
   typedef HistogramType::const_iterator HistogramTypeConstIter;
   void Trim();
 
-  int max_num_bins_;
+  unsigned int max_num_bins_;
   HistogramType bins_;
 
 };
