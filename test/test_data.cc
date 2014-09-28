@@ -4,9 +4,11 @@
 #include <vector>
 #include <cstdio>
 
+#define IRIS "bin/data/iris.svmlight"
+
 TEST(DataTest, LoadIris) {
   DataMatrix d;
-  ASSERT_EQ(0, d.Load("bin/data/iris.svmlight"));
+  ASSERT_EQ(0, d.Load(IRIS));
   ASSERT_EQ(4, d.Dimension());
   ASSERT_EQ(150, d.Size());
 
@@ -38,4 +40,12 @@ TEST(DataTest, LoadIris) {
   ASSERT_EQ(1, col_sindices[1]);
   ASSERT_NEAR(5.1, col_fvals[0], 0.001);
   ASSERT_NEAR(4.9, col_fvals[1], 0.001);
+};
+
+TEST(DataTest, UpdateTargets) {
+  DataMatrix d;
+  ASSERT_EQ(0, d.Load(IRIS));
+  std::vector<double> new_targets(d.Size(), 0.0);
+  d.SetTargets(new_targets);
+  ASSERT_EQ(new_targets, d.GetTargets());
 };

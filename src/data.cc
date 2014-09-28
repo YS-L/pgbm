@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <glog/logging.h>
+
 #define LINE_BUFFER 50000
 
 DataMatrix::DataMatrix() { }
@@ -81,16 +83,21 @@ unsigned int DataMatrix::Dimension() {
   return column_data_.size();
 };
 
-const std::vector<DataMatrix::FeaturePoint>& DataMatrix::GetRow(int index) const {
-  // TODO: Check index valid
+const std::vector<DataMatrix::FeaturePoint>& DataMatrix::GetRow(unsigned int index) const {
+  CHECK(index < row_data_.size()) << "Row index out of bound";
   return row_data_[index];
 };
 
-const std::vector<DataMatrix::FeaturePoint>& DataMatrix::GetColumn(int index) const {
-  // TODO: Check index valid
+const std::vector<DataMatrix::FeaturePoint>& DataMatrix::GetColumn(unsigned int index) const {
+  // TODO: Efficiency?
+  CHECK(column_data_.find(index) != column_data_.end()) << "Feature index not found";
   return column_data_.at(index);
 };
 
 const std::vector<double>& DataMatrix::GetTargets() const {
   return targets_;
+};
+
+void DataMatrix::SetTargets(const std::vector<double>& targets) {
+  targets_ = targets;
 };

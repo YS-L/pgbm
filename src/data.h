@@ -16,12 +16,14 @@ public:
 	};
 
 	int Load(const char *filename);
-	const std::vector<FeaturePoint>& GetRow(int index) const;
-	const std::vector<FeaturePoint>& GetColumn(int index) const;
+	void SetTargets(const std::vector<double>& targets);
+	const std::vector<FeaturePoint>& GetRow(unsigned int index) const;
+	const std::vector<FeaturePoint>& GetColumn(unsigned int index) const;
 	const std::vector<double>& GetTargets() const;
 
 	unsigned int Size();
 	unsigned int Dimension();
+
 private:
 
 	std::map<int, std::vector<FeaturePoint> > column_data_;
