@@ -73,6 +73,7 @@ int DataMatrix::Load(const char *filename) {
     sample_idx += 1;
   }
   fclose(fp);
+  return 0;
 };
 
 unsigned int DataMatrix::Size() {
@@ -88,6 +89,14 @@ const DataMatrix::SamplePoint& DataMatrix::GetRow(unsigned int index) const {
   return row_data_[index];
 };
 
+const std::vector<DataMatrix::SamplePoint>& DataMatrix::GetRows() const {
+  return row_data_;
+};
+
+const std::map<unsigned int, std::vector<DataMatrix::FeaturePoint> >& DataMatrix::GetColumns() const {
+  return column_data_;
+};
+
 const std::vector<DataMatrix::FeaturePoint>& DataMatrix::GetColumn(unsigned int index) const {
   // TODO: Efficiency?
   CHECK(column_data_.find(index) != column_data_.end()) << "Feature index not found";
@@ -100,4 +109,13 @@ const std::vector<double>& DataMatrix::GetTargets() const {
 
 void DataMatrix::SetTargets(const std::vector<double>& targets) {
   targets_ = targets;
+};
+
+
+std::vector<unsigned int> DataMatrix::GetFeatureKeys() const {
+  std::vector<unsigned int> keys;
+  for (auto it = column_data_.begin(); it != column_data_.end(); ++it) {
+    keys.push_back(it->first);
+  }
+  return keys;
 };
