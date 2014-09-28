@@ -76,11 +76,11 @@ int DataMatrix::Load(const char *filename) {
   return 0;
 };
 
-unsigned int DataMatrix::Size() {
+unsigned int DataMatrix::Size() const {
   return row_data_.size();
 };
 
-unsigned int DataMatrix::Dimension() {
+unsigned int DataMatrix::Dimension() const {
   return column_data_.size();
 };
 

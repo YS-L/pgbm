@@ -27,8 +27,8 @@ public:
 	const std::vector<double>& GetTargets() const;
 	std::vector<unsigned int> GetFeatureKeys() const;
 
-	unsigned int Size();
-	unsigned int Dimension();
+	unsigned int Size() const;
+	unsigned int Dimension() const;
 
 private:
 
