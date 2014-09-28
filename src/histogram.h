@@ -27,6 +27,7 @@ public:
   void Update(double x, double y);
   void Merge(const Histogram& hist);
   BinVal Interpolate(double x) const;
+  BinVal InterpolateInf() const;
   std::vector<double> Uniform(int N) const;
 
   unsigned int get_num_bins() const {

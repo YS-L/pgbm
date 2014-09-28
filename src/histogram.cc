@@ -76,6 +76,20 @@ Histogram::BinVal Histogram::Interpolate(double x) const {
   return val;
 };
 
+Histogram::BinVal Histogram::InterpolateInf() const {
+  // TODO: cache summation in frozen mode
+  double m_summed = 0.0;
+  double y_summed = 0.0;
+  for (HistogramTypeConstIter it = bins_.begin(); it != bins_.end(); ++it) {
+    m_summed += it->val.m;
+    y_summed += it->val.y;
+  }
+  BinVal val;
+  val.m = m_summed;
+  val.y = y_summed;
+  return val;
+};
+
 void Histogram::Trim() {
   while (bins_.size() > max_num_bins_) {
     // TODO: Handle ties in minimum distance
