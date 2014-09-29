@@ -32,10 +32,12 @@ public:
     unsigned int depth;
   };
 
-  Tree(unsigned int max_depth, unsigned int n_bins, unsigned int n_splits);
+  Tree(unsigned int max_depth=3, unsigned int n_bins=40, unsigned int n_splits=80);
 
   void Train(const DataMatrix& data);
+  void Train(const DataMatrix& data, const std::vector<double>& targets);
   std::vector<double> Predict(const DataMatrix& data) const;
+  double Predict(const DataMatrix::SamplePoint& sample) const;
 
 private:
 
@@ -55,7 +57,8 @@ private:
     bool can_split;
   };
 
-  void ProcessNode(const DataMatrix& data, unsigned int node_id);
+  void ProcessNode(const DataMatrix& data, const std::vector<double>& targets,
+      unsigned int node_id);
   void InitializeRootNode(const DataMatrix& data);
   void SplitNode(const DataMatrix& data, const Node& parent,
                  const SplitResult& result);

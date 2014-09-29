@@ -9,11 +9,28 @@ Tree::Tree(unsigned int max_depth, unsigned int n_bins, unsigned int n_splits):
 };
 
 void Tree::Train(const DataMatrix& data) {
+  Train(data, data.GetTargets());
+};
+
+void Tree::Train(const DataMatrix& data, const std::vector<double>& targets) {
   InitializeRootNode(data);
   while (!processing_queue_.empty()) {
-    ProcessNode(data, processing_queue_.front());
+    ProcessNode(data, targets, processing_queue_.front());
     processing_queue_.pop();
   }
+};
+
+std::vector<double> Tree::Predict(const DataMatrix& data) const {
+  std::vector<double> predictions;
+  predictions.reserve(data.Size());
+  for (unsigned int i = 0; i < data.Size(); ++i) {
+    predictions.push_back(Predict(data.GetRow(i)));
+  }
+  return predictions;
+};
+
+double Tree::Predict(const DataMatrix::SamplePoint& sample) const {
+  return TraverseTree(sample);
 };
 
 void Tree::InitializeRootNode(const DataMatrix& data) {
@@ -37,7 +54,8 @@ unsigned int Tree::AddNode(Node& node) {
   return node.id;
 };
 
-void Tree::ProcessNode(const DataMatrix& data, unsigned int node_id) {
+void Tree::ProcessNode(const DataMatrix& data,
+    const std::vector<double>& targets, unsigned int node_id) {
 
   Node& node = nodes_[node_id];
 
@@ -54,7 +72,6 @@ void Tree::ProcessNode(const DataMatrix& data, unsigned int node_id) {
   for (unsigned int i = 0; i < feature_keys.size(); ++i) {
     unsigned int fkey = feature_keys[i];
     const auto& column = data.GetColumn(fkey);
-    const auto& targets = data.GetTargets();
     auto histogram = ComputeHistogram(column, targets, node.samples);
     SplitResult result = FindBestSplit(histogram);
     if (best_result.can_split && result.cost < best_result.cost) {
