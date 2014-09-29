@@ -9,28 +9,45 @@ Tree::Tree(unsigned int max_depth, unsigned int n_bins, unsigned int n_splits):
 };
 
 void Tree::Train(const DataMatrix& data) {
-  Node root;
-  root.id = 0;
-  root.samples.reserve(data.Size());
-  root.depth = 0;
-  for (unsigned int i = 0; i < data.Size(); ++i) {
-    root.samples.push_back(i);
-  }
-  processing_queue_.push(root);
+  InitializeRootNode(data);
   while (!processing_queue_.empty()) {
     ProcessNode(data, processing_queue_.front());
     processing_queue_.pop();
   }
 };
 
-void Tree::ProcessNode(const DataMatrix& data, const Node& node) {
+void Tree::InitializeRootNode(const DataMatrix& data) {
+  nodes_.clear();
+  Node root;
+  root.samples.reserve(data.Size());
+  root.depth = 0;
+  // NOTE: Even if the almost unncessary label is to be filled, it has to be
+  // determined by the master later.
+  for (unsigned int i = 0; i < data.Size(); ++i) {
+    root.samples.push_back(i);
+  }
+  unsigned int root_id = AddNode(root);
+  processing_queue_.push(root_id);
+};
 
-  if (node.depth > max_depth_) {
+// Add a node and return it's unique id
+unsigned int Tree::AddNode(Node& node) {
+  node.id = nodes_.size();
+  nodes_.push_back(node);
+  return node.id;
+};
+
+void Tree::ProcessNode(const DataMatrix& data, unsigned int node_id) {
+
+  Node& node = nodes_[node_id];
+
+  if (node.depth >= max_depth_) {
     return;
   }
 
   // Find the best splits for current node among all the features
   SplitResult best_result;
+  best_result.can_split = false;
   best_result.cost = std::numeric_limits<double>::max();
   unsigned int best_feature;
   std::vector<unsigned int> feature_keys = data.GetFeatureKeys();
@@ -40,7 +57,7 @@ void Tree::ProcessNode(const DataMatrix& data, const Node& node) {
     const auto& targets = data.GetTargets();
     auto histogram = ComputeHistogram(column, targets, node.samples);
     SplitResult result = FindBestSplit(histogram);
-    if (result.cost < best_result.cost) {
+    if (best_result.can_split && result.cost < best_result.cost) {
       // TODO: Options to check for number of observations per leaf, etc. Or
       // check for these within FindBestSplit using the histogram?
       best_result = result;
@@ -48,38 +65,47 @@ void Tree::ProcessNode(const DataMatrix& data, const Node& node) {
     }
   }
 
-  // Finalize current node and push next nodes into the queue
-  Node current, next_left, next_right;
+  if (!best_result.can_split) {
+    return;
+  }
 
-  current = node;
-  current.id = nodes_.size();
-  current.feature_index = best_feature;
-  current.threshold = best_result.threshold;
-  current.is_leaf = false;
+  // TODO: Currently always split until reaching the required depth
+  node.is_leaf = false;
+  node.feature_index = best_feature;
 
-  next_left.depth = current.depth + 1;
+  // Prepare the children nodes if can split
+  Node next_left, next_right;
+  next_left.depth = node.depth + 1;
   next_left.label = best_result.label_left;
   next_left.is_leaf = true;
-  next_right.depth = current.depth + 1;
+  next_right.depth = node.depth + 1;
   next_right.label = best_result.label_right;
   next_right.is_leaf = true;
 
-  auto features = data.GetColumn(current.feature_index);
-  for(unsigned int i = 0; i < current.samples.size(); ++i) {
-    unsigned int sample_idx = current.samples[i];
-    if (features[sample_idx].value < current.threshold) {
+  auto features = data.GetColumn(node.feature_index);
+  for(unsigned int i = 0; i < node.samples.size(); ++i) {
+    unsigned int sample_idx = node.samples[i];
+    if (features[sample_idx].value < node.threshold) {
       next_left.samples.push_back(sample_idx);
     }
     else {
       next_right.samples.push_back(sample_idx);
     }
   }
-  // After split is decided, no longer need to retain the sample indices
-  current.samples.clear();
-  nodes_.push_back(current);
 
-  processing_queue_.push(next_left);
-  processing_queue_.push(next_right);
+  // After split is decided and samples divided to the children, no longer need
+  // to retain the sample indices
+  node.samples.clear();
+
+  unsigned int left_id = AddNode(next_left);
+  unsigned int right_id = AddNode(next_right);
+
+  // Link parent and childrens
+  node.left_id = left_id;
+  node.right_id = right_id;
+
+  processing_queue_.push(left_id);
+  processing_queue_.push(right_id);
 };
 
 Tree::SplitResult Tree::FindBestSplit(const Histogram& histogram) const {
@@ -109,6 +135,7 @@ Tree::SplitResult Tree::FindBestSplit(const Histogram& histogram) const {
   res.threshold = best_threshold;
   res.label_left = best_y_left;
   res.label_right = best_y_right;
+  res.can_split = true;
   return res;
 };
 

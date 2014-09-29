@@ -51,9 +51,15 @@ private:
     unsigned int threshold;
     double label_left;
     double label_right;
+    double label_self; // When can_split is false
+    bool can_split;
   };
 
-  void ProcessNode(const DataMatrix& data, const Node& node);
+  void ProcessNode(const DataMatrix& data, unsigned int node_id);
+  void InitializeRootNode(const DataMatrix& data);
+  void SplitNode(const DataMatrix& data, const Node& parent,
+                 const SplitResult& result);
+  unsigned int AddNode(Node& node);
   SplitResult FindBestSplit(const Histogram& histogram) const;
   Histogram ComputeHistogram(
       const std::vector<DataMatrix::FeaturePoint>& column,
@@ -65,7 +71,7 @@ private:
   unsigned int n_bins_;
   unsigned int n_splits_;
   std::vector<Node> nodes_;
-  std::queue<Node> processing_queue_;
+  std::queue<unsigned int> processing_queue_;
 };
 
 #endif
