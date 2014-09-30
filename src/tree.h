@@ -32,7 +32,7 @@ public:
     unsigned int depth;
   };
 
-  Tree(unsigned int max_depth=3, unsigned int n_bins=40, unsigned int n_splits=80);
+  Tree(unsigned int max_depth=3, unsigned int n_bins=40, unsigned int n_splits=20);
 
   void Train(const DataMatrix& data);
   void Train(const DataMatrix& data, const std::vector<double>& targets);
@@ -50,7 +50,7 @@ private:
   // Result of splitting on a single feature optimally
   struct SplitResult {
     double cost;
-    unsigned int threshold;
+    double threshold;
     double label_left;
     double label_right;
     double label_self; // When can_split is false

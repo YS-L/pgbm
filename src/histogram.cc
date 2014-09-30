@@ -38,10 +38,13 @@ void Histogram::Merge(const Histogram& other) {
 
 // Compute the additional offset to be added to the accumulated sum
 double trapezoid_estimate(double s, double p1, double p2, double v1, double v2) {
-  double vs = v1 + (v2 - v1) * (s - p1) / (p2 - p1);
-  double as = (v1 + vs) * (s - p1) / 2;
+  // Bottom base w.r.t trepezoid truncated at s
+  // TODO: Remove max() if not handling boundary cases here
+  double vs = v1 + (v2 - v1) * std::max((s - p1), 0.0) / (p2 - p1);
+  double as = (v1 + vs) * std::max((s - p1), 0.0) / 2;
   double a2 = (v1 + v2) * (p2 - p1) / 2;
   double R = (v1 + v2) / 2;
+  //LOG(INFO) << "as : a2: -->" << as << " vs " <<a2;
   double res = (as / a2) * R;
   return res;
 };
@@ -49,11 +52,14 @@ double trapezoid_estimate(double s, double p1, double p2, double v1, double v2) 
 Histogram::BinVal Histogram::Interpolate(double x) const {
   // TODO: assert the x in between p_min and p_max
   // TODO: cache summation in frozen mode
-  // TODO: For completeness sake, need to handle -ve and +ve infinity 
+  // TODO: For completeness sake, need to handle -ve and +ve infinity, as it2
+  // below might hit the boundaries
   Bin bin;
   bin.p = x;
   HistogramTypeConstIter it2 = std::upper_bound(bins_.begin(), bins_.end(), bin);
   HistogramTypeConstIter it1 = it2 - 1;
+  //LOG(INFO) << "it2 index: " << it2 - bins_.begin() << "; is end: " << (it2 == bins_.end())?1:0;
+  //LOG(INFO) << "bins_ max: " << it2 - bins_.begin();
   double m_summed = 0.0;
   double y_summed = 0.0;
   for (HistogramTypeConstIter it = bins_.begin(); it != it2; ++it) {
@@ -66,10 +72,41 @@ Histogram::BinVal Histogram::Interpolate(double x) const {
       y_summed += it->val.y / 2.0;
     }
   }
-  double m_offset = trapezoid_estimate(x, it1->p, it2->p,
-                                       it1->val.m, it2->val.m);
-  double y_offset = trapezoid_estimate(x, it1->p, it2->p,
-                                       it1->val.y, it2->val.y);
+  double m_offset, y_offset;
+  // Take care of two critical bin locations: first and last
+  if (it2 == bins_.begin()) {
+    //LOG(INFO) << "Handling special case of neg_inf!";
+    double p_neg_inf = bins_[0].p - (bins_[1].p - bins_[0].p);
+    //LOG(INFO) << "p_0: " << it2->p << " m_0: " << it2->val.m;
+    if (x < p_neg_inf) {
+      m_offset = 0;
+      y_offset = 0;
+    }
+    else {
+      m_offset = trapezoid_estimate(x, p_neg_inf, it2->p, 0.0, it2->val.m);
+      y_offset = trapezoid_estimate(x, p_neg_inf, it2->p, 0.0, it2->val.y);
+    }
+    //LOG(INFO) << "p_neg_inf: " << p_neg_inf << " offsets: " << m_offset << " " << y_offset;
+  }
+  else if (it2 == bins_.end()) {
+    //LOG(INFO) << "Handling special case of pos_inf!";
+    double p_pos_inf = bins_[bins_.size()-1].p + (bins_[bins_.size()-1].p -
+        bins_[bins_.size()-2].p);
+    if (x > p_pos_inf) {
+      m_offset = it2->val.m / 2;
+      y_offset = it2->val.y / 2;
+    }
+    else{
+      m_offset = trapezoid_estimate(x, it2->p, p_pos_inf, it1->val.m, 0.0);
+      y_offset = trapezoid_estimate(x, it2->p, p_pos_inf, it1->val.y, 0.0);
+    }
+    //LOG(INFO) << "p_pos_inf: " << p_pos_inf << " offsets: " << m_offset << " " << y_offset;
+  }
+  else {
+    m_offset = trapezoid_estimate(x, it1->p, it2->p, it1->val.m, it2->val.m);
+    y_offset = trapezoid_estimate(x, it1->p, it2->p, it1->val.y, it2->val.y);
+  }
+
   BinVal val;
   val.m = m_summed + m_offset;
   val.y = y_summed + y_offset;
@@ -119,6 +156,7 @@ void Histogram::Trim() {
 std::vector<double> Histogram::Uniform(int N) const {
   // N corresponds to tilde B in the paper
   CHECK(N >= 1) << "Histogram's Uniform routine requires N >= 1";
+  //CHECK(bins_.size() >= 2) << "Histogrom does not have enough bins";
   std::vector<double> results;
   double sum_m = 0.0;
   for (unsigned int i = 0; i < bins_.size(); ++i) {
@@ -142,6 +180,11 @@ std::vector<double> Histogram::Uniform(int N) const {
     // This is (i+1) -- the first element that is larger than s
     std::vector<double>::iterator it = std::upper_bound(cumsums.begin(),
                                                         cumsums.end(), s);
+
+    if (it == cumsums.begin()) {
+      continue;
+    }
+
     unsigned int i = it - cumsums.begin() - 1;
     double d = s - cumsums[i];
     double a = bins_[i+1].val.m - bins_[i].val.m;
@@ -157,5 +200,6 @@ std::vector<double> Histogram::Uniform(int N) const {
     double uj = bins_[i].p + (bins_[i+1].p - bins_[i].p)*z;
     results.push_back(uj);
   }
+
   return results;
 };

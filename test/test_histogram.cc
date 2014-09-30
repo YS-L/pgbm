@@ -76,3 +76,18 @@ TEST(HistogramTest, BenHaimAppendixA) {
   ASSERT_NEAR(28.98, uniform_points[1], 0.02);
 
 };
+
+TEST(HistogramTest, Uniform) {
+  unsigned int N = 5;
+  Histogram hist(N);
+  std::vector<Histogram::Bin> bins;
+  std::vector<int> sequence = {23,19,10,16,36,2,9,32,30,45};
+  for (unsigned int i = 0; i < sequence.size(); ++i) {
+    hist.Update(sequence[i], 1);
+  }
+  // TODO: About >= 25 will fail, since now points before first bin is crudely
+  // discarded
+  unsigned int B = 20;
+  std::vector<double> uniform_points = hist.Uniform(B);
+  ASSERT_EQ(B-1, uniform_points.size());
+};
