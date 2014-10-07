@@ -11,18 +11,23 @@ public:
 
   virtual ~Metric() { };
 
-  virtual double evaluate(const std::vector<double>& predictions,
+  virtual double Evaluate(const std::vector<double>& predictions,
                           const DataMatrix& data) const = 0;
+
+  virtual const char* Name() const = 0;
 
 };
 
-class Accuracy {
+class Accuracy: public Metric {
 
 public:
 
-  virtual double evaluate(const std::vector<double>& predictions,
+  virtual double Evaluate(const std::vector<double>& predictions,
                           const DataMatrix& data) const;
 
+  virtual const char* Name() const {
+    return "Accuracy";
+  }
 };
 
 #endif

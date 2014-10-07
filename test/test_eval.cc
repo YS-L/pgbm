@@ -16,7 +16,7 @@ TEST(EvalTest, Accuracy) {
   Accuracy metric;
 
   predictions = data.GetTargets();
-  ASSERT_NEAR(1.0, metric.evaluate(predictions, data), 1e-6);
+  ASSERT_NEAR(1.0, metric.Evaluate(predictions, data), 1e-6);
 
   for(unsigned int i = 0; i < 10; ++i) {
     if (predictions[i] > 10e-6) {
@@ -26,5 +26,5 @@ TEST(EvalTest, Accuracy) {
     }
   }
   double expected_accuracy = (predictions.size()-10.0)/predictions.size();
-  ASSERT_NEAR(expected_accuracy, metric.evaluate(predictions, data), 1e-6);
+  ASSERT_NEAR(expected_accuracy, metric.Evaluate(predictions, data), 1e-6);
 };

@@ -4,7 +4,7 @@
 #include <cmath>
 #include <glog/logging.h>
 
-double Accuracy::evaluate(const std::vector<double>& predictions,
+double Accuracy::Evaluate(const std::vector<double>& predictions,
                           const DataMatrix& data) const {
   int n_matched = 0;
   const std::vector<double>& targets = data.GetTargets();

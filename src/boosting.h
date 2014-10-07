@@ -3,6 +3,7 @@
 
 #include "tree.h"
 #include "loss.h"
+#include "eval.h"
 
 #include <vector>
 #include <memory>
@@ -12,7 +13,7 @@ class DataMatrix;
 class Booster {
 
 public:
-  Booster(unsigned int n_iter, double shrinkage);
+  Booster(unsigned int n_iter, double shrinkage, unsigned int eval_frequency=1);
 
   void Train(const DataMatrix& data);
   std::vector<double> Predict(const DataMatrix& data) const;
@@ -26,7 +27,8 @@ private:
   std::vector<Tree> models_;
   std::vector<double> cached_response_;
   std::shared_ptr<Loss> loss_function_;
-
+  std::shared_ptr<Metric> metric_;
+  unsigned int eval_frequency_;
 };
 
 #endif

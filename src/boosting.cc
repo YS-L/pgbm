@@ -5,9 +5,11 @@
 #include <algorithm>
 #include <glog/logging.h>
 
-Booster::Booster(unsigned int n_iter, double shrinkage):
+Booster::Booster(unsigned int n_iter, double shrinkage, unsigned int eval_frequency):
   n_iter_(n_iter), shrinkage_(shrinkage),
-  loss_function_(new TwoClassLogisticRegression) {
+  loss_function_(new TwoClassLogisticRegression),
+  metric_(new Accuracy),
+  eval_frequency_(eval_frequency) {
 };
 
 void Booster::Train(const DataMatrix& data) {
@@ -16,13 +18,13 @@ void Booster::Train(const DataMatrix& data) {
   double base_response = loss_function_->Baseline(data.GetTargets());
 
   cached_response_ = std::vector<double>(data.Size(), base_response);
-  PEEK_VECTOR(cached_response_, 20);
+  //PEEK_VECTOR(cached_response_, 20);
 
   for (unsigned int i = 0; i < n_iter_; ++i) {
-    LOG(INFO) << "Boosting iteration " << i;
+    //LOG(INFO) << "Boosting iteration " << i;
     std::vector<double> gradients;
     loss_function_->Gradient(data.GetTargets(), cached_response_, gradients);
-    PEEK_VECTOR(gradients, 20)
+    //PEEK_VECTOR(gradients, 20)
     LOG(INFO) << "Training a tree";
     models_.push_back(Tree(6, 40, 80));
     models_.back().Train(data, gradients);
@@ -30,7 +32,13 @@ void Booster::Train(const DataMatrix& data) {
       cached_response_[j] += shrinkage_ *
         models_.back().Predict(data.GetRow(j));
     }
-    PEEK_VECTOR(cached_response_, 0);
+    //PEEK_VECTOR(cached_response_, 0);
+    if (i % eval_frequency_ == 0) {
+      std::vector<double> predictions;
+      loss_function_->Output(cached_response_, predictions);
+      double score = metric_->Evaluate(predictions, data);
+      printf("[%d] %s: %.6f\n", i*eval_frequency_, metric_->Name(), score);
+    }
   }
 };
 
