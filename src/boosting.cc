@@ -26,7 +26,7 @@ void Booster::Train(const DataMatrix& data) {
     loss_function_->Gradient(data.GetTargets(), cached_response_, gradients);
     //PEEK_VECTOR(gradients, 20)
     LOG(INFO) << "Training a tree";
-    models_.push_back(Tree(6, 40, 80));
+    models_.push_back(Tree(8, 100, 100));
     models_.back().Train(data, gradients);
     for(unsigned int j = 0; j < cached_response_.size(); ++j) {
       cached_response_[j] += shrinkage_ *

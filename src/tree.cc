@@ -92,7 +92,7 @@ void Tree::ProcessNode(const DataMatrix& data,
     return;
   }
 
-  LOG(INFO) << "Node [" << node_id <<"]: Making a split on feature " << best_feature << " with threshold " << best_result.threshold << "; label_left: " << best_result.label_left << " label_right: " << best_result.label_right;
+  //LOG(INFO) << "Node [" << node_id <<"]: Making a split on feature " << best_feature << " with threshold " << best_result.threshold << "; label_left: " << best_result.label_left << " label_right: " << best_result.label_right;
 
   // TODO: Currently always split until reaching the required depth
   nodes_[node_id].is_leaf = false;
