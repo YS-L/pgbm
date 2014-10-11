@@ -19,6 +19,8 @@ public:
   virtual void Output(const std::vector<double>& responses,
                       std::vector<double>& transformed) const;
 
+  virtual const char* Name() = 0;
+
 };
 
 class TwoClassLogisticRegression: public Loss {
@@ -33,6 +35,8 @@ public:
 
   virtual void Output(const std::vector<double>& responses,
                       std::vector<double>& transformed) const;
+
+  virtual const char* Name();
 
 };
 

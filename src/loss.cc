@@ -60,3 +60,6 @@ void TwoClassLogisticRegression::Output(
   }
 };
 
+const char* TwoClassLogisticRegression::Name() {
+  return "TwoClassLogisticRegression";
+};

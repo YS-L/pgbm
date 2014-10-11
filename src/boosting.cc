@@ -64,3 +64,12 @@ std::vector<double> Booster::Predict(const DataMatrix& data) const {
   loss_function_->Output(responses, predictions);
   return predictions;
 };
+
+void Booster::Describe() {
+  printf("Booster parameters:\n");
+  printf("n_iter: %d\n", n_iter_);
+  printf("shrinkage: %f\n", shrinkage_);
+  printf("num_bins: %d\n", num_bins_);
+  printf("num_split_candidates: %d\n", num_split_candidates_);
+  printf("loss_function: %s\n", loss_function_->Name());
+};

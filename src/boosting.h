@@ -19,6 +19,7 @@ public:
 
   void Train(const DataMatrix& data);
   std::vector<double> Predict(const DataMatrix& data) const;
+  void Describe();
 
 private:
 

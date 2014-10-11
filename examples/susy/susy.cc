@@ -26,6 +26,7 @@ int main(int argc, char** argv) {
   Accuracy metric;
   double score = metric.Evaluate(predictions, data_eval);
 
+  booster.Describe();
   printf("Evaluation score: %.6f\n", score);
 
   return 0;
