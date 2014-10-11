@@ -34,7 +34,7 @@ public:
     return bins_.size();
   };
 
-  const std::vector<Bin> get_bins() const {
+  const std::vector<Bin>& get_bins() const {
     return bins_;
   }
 
@@ -43,9 +43,12 @@ private:
   typedef HistogramType::iterator HistogramTypeIter;
   typedef HistogramType::const_iterator HistogramTypeConstIter;
   void Trim();
+  void PrecomputeCumsums() const;
 
   unsigned int max_num_bins_;
   HistogramType bins_;
+  mutable bool dirty_;
+  mutable std::vector<BinVal> cumsums_;
 
 };
 

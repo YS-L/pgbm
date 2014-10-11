@@ -7,8 +7,10 @@
 
 #include <glog/logging.h>
 
-Histogram::Histogram(unsigned int num_bins): max_num_bins_(num_bins) {
-};
+Histogram::Histogram(unsigned int num_bins):
+  max_num_bins_(num_bins),
+  dirty_(true),
+  cumsums_(num_bins+1) { };
 
 void Histogram::Update(double x, double y) {
   BinVal val;
@@ -26,6 +28,8 @@ void Histogram::Update(double x, double y) {
     bins_.insert(insert_location, bin);
     Trim();
   }
+  dirty_ = true;
+  CHECK(bins_.size() > 0) << "Bin size is 0 after Update";
 };
 
 void Histogram::Merge(const Histogram& other) {
@@ -34,6 +38,7 @@ void Histogram::Merge(const Histogram& other) {
   }
   std::sort(bins_.begin(), bins_.end());
   Trim();
+  dirty_ = true;
 };
 
 // Compute the additional offset to be added to the accumulated sum
@@ -51,7 +56,6 @@ double trapezoid_estimate(double s, double p1, double p2, double v1, double v2) 
 
 Histogram::BinVal Histogram::Interpolate(double x) const {
   // TODO: assert the x in between p_min and p_max
-  // TODO: cache summation in frozen mode
   // TODO: For completeness sake, need to handle -ve and +ve infinity, as it2
   // below might hit the boundaries
   Bin bin;
@@ -62,6 +66,7 @@ Histogram::BinVal Histogram::Interpolate(double x) const {
   //LOG(INFO) << "bins_ max: " << it2 - bins_.begin();
   double m_summed = 0.0;
   double y_summed = 0.0;
+  /*
   for (HistogramTypeConstIter it = bins_.begin(); it != it2; ++it) {
     if (it != it1) {
       m_summed += it->val.m;
@@ -72,6 +77,14 @@ Histogram::BinVal Histogram::Interpolate(double x) const {
       y_summed += it->val.y / 2.0;
     }
   }
+  */
+  PrecomputeCumsums();
+  if (it2 != bins_.begin()) {
+    unsigned int index_upto = it2 - bins_.begin() - 1;
+    m_summed = cumsums_[index_upto].m;
+    y_summed = cumsums_[index_upto].y;
+  }
+
   double m_offset, y_offset;
   // Take care of two critical bin locations: first and last
   if (it2 == bins_.begin()) {
@@ -114,7 +127,7 @@ Histogram::BinVal Histogram::Interpolate(double x) const {
 };
 
 Histogram::BinVal Histogram::InterpolateInf() const {
-  // TODO: cache summation in frozen mode
+  /*
   double m_summed = 0.0;
   double y_summed = 0.0;
   for (HistogramTypeConstIter it = bins_.begin(); it != bins_.end(); ++it) {
@@ -125,6 +138,10 @@ Histogram::BinVal Histogram::InterpolateInf() const {
   val.m = m_summed;
   val.y = y_summed;
   return val;
+  */
+  PrecomputeCumsums();
+  const BinVal& binval = cumsums_[bins_.size()];
+  return binval;
 };
 
 void Histogram::Trim() {
@@ -147,7 +164,7 @@ void Histogram::Trim() {
                   (bins_[j].p * bins_[j].val.m)) /
                  (bins_[i].val.m + bins_[j].val.m);
     bins_[i].val.m += bins_[j].val.m;
-    bins_[i].val.y += bins_[j].val.m;
+    bins_[i].val.y += bins_[j].val.y;
     bins_.erase(bins_.begin() + j);
   }
 };
@@ -202,4 +219,35 @@ std::vector<double> Histogram::Uniform(int N) const {
   }
 
   return results;
+};
+
+void Histogram::PrecomputeCumsums() const {
+  // Pre-compute the cummulative sums
+  // cumsums_[i] means summations up to 1//2 of the i-th bin.
+
+  // Only recompute when necessary
+  if (!dirty_) {
+    return;
+  }
+
+  for (unsigned int i = 0; i < bins_.size(); ++i) {
+    if (i == 0) {
+      cumsums_[i].m = bins_[i].val.m / 2.0;
+      cumsums_[i].y = bins_[i].val.y / 2.0;
+    }
+    else {
+      cumsums_[i].m = cumsums_[i-1].m
+                      + bins_[i-1].val.m / 2.0
+                      + bins_[i].val.m / 2.0;
+
+      cumsums_[i].y = cumsums_[i-1].y
+                      + bins_[i-1].val.y / 2.0
+                      + bins_[i].val.y / 2.0;
+    }
+  }
+  // Sums at +ve infinity (i.e. sum up all)
+  unsigned int index_inf = bins_.size();
+  cumsums_[index_inf].m = cumsums_[index_inf-1].m + bins_.back().val.m/2.0;
+  cumsums_[index_inf].y = cumsums_[index_inf-1].y + bins_.back().val.y/2.0;
+  dirty_ = false;
 };
