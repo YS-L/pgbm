@@ -175,6 +175,7 @@ std::vector<double> Histogram::Uniform(int N) const {
   CHECK(N >= 1) << "Histogram's Uniform routine requires N >= 1";
   //CHECK(bins_.size() >= 2) << "Histogrom does not have enough bins";
   std::vector<double> results;
+  /*
   double sum_m = 0.0;
   for (unsigned int i = 0; i < bins_.size(); ++i) {
     sum_m += bins_[i].val.m;
@@ -192,18 +193,29 @@ std::vector<double> Histogram::Uniform(int N) const {
                    + bins_[i].val.m / 2.0;
     }
   }
+  */
+  PrecomputeCumsums();
+
+  // Last of cumsums_ adds up all bins
+  double sum_m = cumsums_.back().m;
+
+  BinVal binval;
   for (int j = 1; j <= N - 1; ++j) {
     double s = ((double)j / N) * sum_m;
     // This is (i+1) -- the first element that is larger than s
-    std::vector<double>::iterator it = std::upper_bound(cumsums.begin(),
-                                                        cumsums.end(), s);
+    //std::vector<double>::iterator it = std::upper_bound(cumsums.begin(),
+                                                        //cumsums.end(), s);
+    binval.m = s;
+    std::vector<BinVal>::iterator it = std::upper_bound(
+        cumsums_.begin(), cumsums_.end(), binval,
+        [](const BinVal& a, const BinVal& b) -> bool { return a.m < b.m; });
 
-    if (it == cumsums.begin()) {
+    if (it == cumsums_.begin()) {
       continue;
     }
 
-    unsigned int i = it - cumsums.begin() - 1;
-    double d = s - cumsums[i];
+    unsigned int i = it - cumsums_.begin() - 1;
+    double d = s - cumsums_[i].m;
     double a = bins_[i+1].val.m - bins_[i].val.m;
     double z;
     if (std::fabs(a) > 10e-8) {
