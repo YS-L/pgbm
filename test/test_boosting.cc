@@ -15,8 +15,7 @@ TEST(BoosterTest, Iris) {
   data.Load(IRIS);
   ASSERT_EQ(150, (int)data.Size());
 
-  //Tree tree(50, 80, 80);
-  Booster booster(50, 0.1);
+  Booster booster(50, 0.1, 8, 100, 100);
   booster.Train(data);
 
   LOG(INFO) << "Predicting...";

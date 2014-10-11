@@ -140,14 +140,21 @@ void Tree::ProcessNode(const DataMatrix& data,
 
 Tree::SplitResult Tree::FindBestSplit(const Histogram& histogram) const {
   //LOG(INFO) << "Finding best split";
+
+  SplitResult best_split;
+  best_split.cost = std::numeric_limits<double>::max();
+  best_split.can_split = false;
+
+  // Possible that the histogram is empty because of no sample at all (TO CHECK)
+  if (histogram.get_num_bins() == 0) {
+	return best_split;
+  }
+
   std::vector<double> candidates = histogram.Uniform(n_splits_);
   //CHECK(candidates.size() > 0) << "Empty split (uniformed) candidates";
   Histogram::BinVal val_inf = histogram.InterpolateInf();
   double l_inf = val_inf.y;
   double m_inf = val_inf.m;
-  SplitResult best_split;
-  best_split.cost = std::numeric_limits<double>::max();
-  best_split.can_split = false;
 
   // Minimum samples required to initiate a split
   if (m_inf <= 2) {
@@ -182,7 +189,7 @@ Tree::SplitResult Tree::FindBestSplit(const Histogram& histogram) const {
       best_split.can_split = true;
     }
   }
-  //LOG(INFO) << "Done finding best split: " << best_threshold;
+  //LOG(INFO) << "Done finding best split with cost: " << best_split.cost;
   return best_split;
 };
 
@@ -190,6 +197,9 @@ Histogram Tree::ComputeHistogram(
     const std::vector<DataMatrix::FeaturePoint>& column,
     const std::vector<double>& targets,
     const std::vector<unsigned int>& samples) const {
+  //TODO: What if samples is empty? Now in the next step find best split will
+  //ignore the resulted empty histogram.
+
   //LOG(INFO) << "Computing histogram";
   Histogram histogram(n_bins_);
   for (unsigned int i = 0; i < samples.size(); ++i) {

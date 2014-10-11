@@ -5,34 +5,42 @@
 #include <algorithm>
 #include <glog/logging.h>
 
-Booster::Booster(unsigned int n_iter, double shrinkage, unsigned int eval_frequency):
+Booster::Booster(unsigned int n_iter, double shrinkage, unsigned int max_depth,
+    unsigned int num_bins, unsigned int num_split_candidates,
+    unsigned int eval_frequency):
   n_iter_(n_iter), shrinkage_(shrinkage),
+  max_depth_(max_depth),
+  num_bins_(num_bins),
+  num_split_candidates_(num_split_candidates),
   loss_function_(new TwoClassLogisticRegression),
   metric_(new Accuracy),
-  eval_frequency_(eval_frequency) {
-};
+  eval_frequency_(eval_frequency) { };
 
 void Booster::Train(const DataMatrix& data) {
   models_.clear();
 
   double base_response = loss_function_->Baseline(data.GetTargets());
 
-  cached_response_ = std::vector<double>(data.Size(), base_response);
   //PEEK_VECTOR(cached_response_, 20);
 
   for (unsigned int i = 0; i < n_iter_; ++i) {
     //LOG(INFO) << "Boosting iteration " << i;
-    std::vector<double> gradients;
-    loss_function_->Gradient(data.GetTargets(), cached_response_, gradients);
-    //PEEK_VECTOR(gradients, 20)
-    LOG(INFO) << "Training a tree";
-    models_.push_back(Tree(8, 100, 100));
-    models_.back().Train(data, gradients);
-    for(unsigned int j = 0; j < cached_response_.size(); ++j) {
-      cached_response_[j] += shrinkage_ *
-        models_.back().Predict(data.GetRow(j));
+    if (i == 0) {
+      cached_response_ = std::vector<double>(data.Size(), base_response);
     }
-    //PEEK_VECTOR(cached_response_, 0);
+    else {
+      std::vector<double> gradients;
+      loss_function_->Gradient(data.GetTargets(), cached_response_, gradients);
+      //PEEK_VECTOR(gradients, 20)
+      LOG(INFO) << "Training a tree";
+      models_.push_back(Tree(max_depth_, num_bins_, num_split_candidates_));
+      models_.back().Train(data, gradients);
+      for(unsigned int j = 0; j < cached_response_.size(); ++j) {
+        cached_response_[j] += shrinkage_ *
+          models_.back().Predict(data.GetRow(j));
+      }
+    }
+    //PEEK_VECTOR(cached_response_, 20);
     if (i % eval_frequency_ == 0) {
       std::vector<double> predictions;
       loss_function_->Output(cached_response_, predictions);
