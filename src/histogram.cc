@@ -66,18 +66,6 @@ Histogram::BinVal Histogram::Interpolate(double x) const {
   //LOG(INFO) << "bins_ max: " << it2 - bins_.begin();
   double m_summed = 0.0;
   double y_summed = 0.0;
-  /*
-  for (HistogramTypeConstIter it = bins_.begin(); it != it2; ++it) {
-    if (it != it1) {
-      m_summed += it->val.m;
-      y_summed += it->val.y;
-    }
-    else{
-      m_summed += it->val.m / 2.0;
-      y_summed += it->val.y / 2.0;
-    }
-  }
-  */
   PrecomputeCumsums();
   if (it2 != bins_.begin()) {
     unsigned int index_upto = it2 - bins_.begin() - 1;
@@ -127,20 +115,9 @@ Histogram::BinVal Histogram::Interpolate(double x) const {
 };
 
 Histogram::BinVal Histogram::InterpolateInf() const {
-  /*
-  double m_summed = 0.0;
-  double y_summed = 0.0;
-  for (HistogramTypeConstIter it = bins_.begin(); it != bins_.end(); ++it) {
-    m_summed += it->val.m;
-    y_summed += it->val.y;
-  }
-  BinVal val;
-  val.m = m_summed;
-  val.y = y_summed;
-  return val;
-  */
   PrecomputeCumsums();
-  const BinVal& binval = cumsums_[bins_.size()];
+  //const BinVal& binval = cumsums_[bins_.size()];
+  const BinVal& binval = cumsums_.back();
   return binval;
 };
 
@@ -175,39 +152,20 @@ std::vector<double> Histogram::Uniform(int N) const {
   CHECK(N >= 1) << "Histogram's Uniform routine requires N >= 1";
   //CHECK(bins_.size() >= 2) << "Histogrom does not have enough bins";
   std::vector<double> results;
-  /*
-  double sum_m = 0.0;
-  for (unsigned int i = 0; i < bins_.size(); ++i) {
-    sum_m += bins_[i].val.m;
-  }
-  std::vector<double> cumsums(bins_.size(), 0.0);
-  for (unsigned int i = 0; i < bins_.size(); ++i) {
-    // Special case of Sum / Interpolate where the target x is always at the
-    // center of a bin -- can be computed inplace directly
-    if (i == 0) {
-      cumsums[i] = bins_[i].val.m / 2.0;
-    }
-    else {
-      cumsums[i] = cumsums[i-1]
-                   + bins_[i-1].val.m / 2.0
-                   + bins_[i].val.m / 2.0;
-    }
-  }
-  */
-  PrecomputeCumsums();
 
+  PrecomputeCumsums();
   // Last of cumsums_ adds up all bins
+  //double sum_m = cumsums_[bins_.size()].m;
   double sum_m = cumsums_.back().m;
 
   BinVal binval;
   for (int j = 1; j <= N - 1; ++j) {
     double s = ((double)j / N) * sum_m;
-    // This is (i+1) -- the first element that is larger than s
-    //std::vector<double>::iterator it = std::upper_bound(cumsums.begin(),
-                                                        //cumsums.end(), s);
     binval.m = s;
+    // This is (i+1) -- the first element that is larger than s; and cumsums_
+    // is not all sorted until saturated
     std::vector<BinVal>::iterator it = std::upper_bound(
-        cumsums_.begin(), cumsums_.end(), binval,
+        cumsums_.begin(), cumsums_.begin() + bins_.size() - 1, binval,
         [](const BinVal& a, const BinVal& b) -> bool { return a.m < b.m; });
 
     if (it == cumsums_.begin()) {
@@ -234,13 +192,16 @@ std::vector<double> Histogram::Uniform(int N) const {
 };
 
 void Histogram::PrecomputeCumsums() const {
-  // Pre-compute the cummulative sums
-  // cumsums_[i] means summations up to 1//2 of the i-th bin.
+  // Pre-compute the cummulative sums, where
+  // - cumsums_[i] means summation up to 1/2 of the i-th bin
+  // - Last element of cumsums_ sums up valus in all the bins
 
   // Only recompute when necessary
   if (!dirty_) {
     return;
   }
+
+  //cumsums_.resize(bins_.size()+1);
 
   for (unsigned int i = 0; i < bins_.size(); ++i) {
     if (i == 0) {
@@ -257,9 +218,18 @@ void Histogram::PrecomputeCumsums() const {
                       + bins_[i].val.y / 2.0;
     }
   }
+
   // Sums at +ve infinity (i.e. sum up all)
+  // Note: Here how the +ve infinity cumsum is accessed has to be standardize
+  // -- it should be accessed via cumsums_.back() (instead of
+  // cumsums_[bins_.size()]).
+  /*
   unsigned int index_inf = bins_.size();
   cumsums_[index_inf].m = cumsums_[index_inf-1].m + bins_.back().val.m/2.0;
   cumsums_[index_inf].y = cumsums_[index_inf-1].y + bins_.back().val.y/2.0;
+  */
+  unsigned int index_inf = max_num_bins_;
+  cumsums_[index_inf].m = cumsums_[bins_.size()-1].m + bins_.back().val.m/2.0;
+  cumsums_[index_inf].y = cumsums_[bins_.size()-1].y + bins_.back().val.y/2.0;
   dirty_ = false;
 };
