@@ -1,4 +1,5 @@
 #include "tree.h"
+#include "mpi_util.h"
 
 #include <cstdlib>
 #include <cmath>
