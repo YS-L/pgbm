@@ -62,7 +62,6 @@ private:
   void InitializeRootNode(const DataMatrix& data);
   void SplitNode(const DataMatrix& data, const Node& parent,
                  const SplitResult& result);
-  unsigned int AddNode(Node& node);
   SplitResult FindBestSplit(const Histogram& histogram) const;
   Histogram ComputeHistogram(
       const std::vector<DataMatrix::FeaturePoint>& column,
@@ -74,6 +73,7 @@ private:
   unsigned int n_bins_;
   unsigned int n_splits_;
   std::vector<Node> nodes_;
+  unsigned int current_node_id_;
   std::queue<unsigned int> processing_queue_;
 };
 

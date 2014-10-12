@@ -7,7 +7,9 @@
 #include <glog/logging.h>
 
 Tree::Tree(unsigned int max_depth, unsigned int n_bins, unsigned int n_splits):
-  max_depth_(max_depth), n_bins_(n_bins), n_splits_(n_splits) {
+  max_depth_(max_depth), n_bins_(n_bins), n_splits_(n_splits),
+  current_node_id_(0)
+{
 };
 
 void Tree::Train(const DataMatrix& data) {
@@ -37,8 +39,9 @@ double Tree::Predict(const DataMatrix::SamplePoint& sample) const {
 };
 
 void Tree::InitializeRootNode(const DataMatrix& data) {
-  nodes_.clear();
-  Node root;
+  nodes_.resize(1 << (max_depth_+1));
+  unsigned int root_id = current_node_id_++;
+  Node& root = nodes_[root_id];
   root.samples.reserve(data.Size());
   root.depth = 0;
   // NOTE: Even if the almost unncessary label is to be filled, it has to be
@@ -46,16 +49,7 @@ void Tree::InitializeRootNode(const DataMatrix& data) {
   for (unsigned int i = 0; i < data.Size(); ++i) {
     root.samples.push_back(i);
   }
-  unsigned int root_id = AddNode(root);
   processing_queue_.push(root_id);
-};
-
-// Add a node and return it's unique id
-unsigned int Tree::AddNode(Node& node) {
-  node.id = nodes_.size();
-  nodes_.push_back(node);
-  //LOG(INFO) << "Added node with id " << node.id;
-  return node.id;
 };
 
 void Tree::ProcessNode(const DataMatrix& data,
@@ -100,8 +94,13 @@ void Tree::ProcessNode(const DataMatrix& data,
   nodes_[node_id].threshold = best_result.threshold;
 
   // Prepare the children nodes if can split
-  // TODO: Uncessary copies here? Need to add first and update in place?
-  Node next_left, next_right;
+  unsigned int left_id = current_node_id_++;
+  unsigned int right_id = current_node_id_++;
+
+  // Reference is OK since nodes_ will not be reallocated
+  Node& next_left = nodes_[left_id];
+  Node& next_right = nodes_[right_id];
+
   next_left.depth = nodes_[node_id].depth + 1;
   next_left.label = best_result.label_left;
   next_left.is_leaf = true;
@@ -123,9 +122,6 @@ void Tree::ProcessNode(const DataMatrix& data,
   // After split is decided and samples divided to the children, no longer need
   // to retain the sample indices
   nodes_[node_id].samples.clear();
-
-  unsigned int left_id = AddNode(next_left);
-  unsigned int right_id = AddNode(next_right);
 
   // Link parent and childrens
   nodes_[node_id].left_id = left_id;
