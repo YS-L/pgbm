@@ -55,13 +55,15 @@ private:
     double label_right;
     double label_self; // When can_split is false
     bool can_split;
+	unsigned int id_left;
+	unsigned int id_right;
+	unsigned int feature_index;
   };
 
   void ProcessNode(const DataMatrix& data, const std::vector<double>& targets,
       unsigned int node_id);
   void InitializeRootNode(const DataMatrix& data);
-  void SplitNode(const DataMatrix& data, const Node& parent,
-                 const SplitResult& result);
+  void FinalizeAndSplitNode(const DataMatrix& data, const SplitResult& result, Node& parent);
   SplitResult FindBestSplit(const Histogram& histogram) const;
   Histogram ComputeHistogram(
       const std::vector<DataMatrix::FeaturePoint>& column,

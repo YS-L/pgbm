@@ -57,6 +57,7 @@ void Tree::ProcessNode(const DataMatrix& data,
 
   //LOG(INFO) << "Processing node " << node_id << " (" << nodes_[node_id].id << ")";
 
+  // TODO: Currently always split until reaching the required depth
   if (nodes_[node_id].depth >= max_depth_) {
     //LOG(INFO) << "Done by depth";
     return;
@@ -66,7 +67,6 @@ void Tree::ProcessNode(const DataMatrix& data,
   SplitResult best_result;
   best_result.can_split = false;
   best_result.cost = std::numeric_limits<double>::max();
-  unsigned int best_feature;
   std::vector<unsigned int> feature_keys = data.GetFeatureKeys();
   for (unsigned int i = 0; i < feature_keys.size(); ++i) {
     //LOG(INFO) << "Computing histogram for feature " << i;
@@ -78,7 +78,7 @@ void Tree::ProcessNode(const DataMatrix& data,
       // TODO: Options to check for number of observations per leaf, etc. Or
       // check for these within FindBestSplit using the histogram?
       best_result = result;
-      best_feature = i;
+      best_result.feature_index = i;
     }
   }
 
@@ -86,32 +86,42 @@ void Tree::ProcessNode(const DataMatrix& data,
     return;
   }
 
-  //LOG(INFO) << "Node [" << node_id <<"]: Making a split on feature " << best_feature << " with threshold " << best_result.threshold << "; label_left: " << best_result.label_left << " label_right: " << best_result.label_right;
+  best_result.id_left = current_node_id_++;
+  best_result.id_right = current_node_id_++;
 
-  // TODO: Currently always split until reaching the required depth
-  nodes_[node_id].is_leaf = false;
-  nodes_[node_id].feature_index = best_feature;
-  nodes_[node_id].threshold = best_result.threshold;
+  //LOG(INFO) << "Node [" << node_id <<"]: Making a split on feature " << best_result.feature_index << " with threshold " << best_result.threshold << "; label_left: " << best_result.label_left << " label_right: " << best_result.label_right;
 
-  // Prepare the children nodes if can split
-  unsigned int left_id = current_node_id_++;
-  unsigned int right_id = current_node_id_++;
+  FinalizeAndSplitNode(data, best_result, nodes_[node_id]);
+
+  //LOG(INFO) << "Done processing node " << node_id;
+  processing_queue_.push(best_result.id_left);
+  processing_queue_.push(best_result.id_right);
+};
+
+void Tree::FinalizeAndSplitNode(const DataMatrix& data, const SplitResult& result, Node& parent) {
+
+  // Finalize current node
+  parent.is_leaf = false;
+  parent.feature_index = result.feature_index;
+  parent.threshold = result.threshold;
 
   // Reference is OK since nodes_ will not be reallocated
-  Node& next_left = nodes_[left_id];
-  Node& next_right = nodes_[right_id];
+  Node& next_left = nodes_[result.id_left];
+  Node& next_right = nodes_[result.id_right];
 
-  next_left.depth = nodes_[node_id].depth + 1;
-  next_left.label = best_result.label_left;
+  next_left.id = result.id_left;
+  next_left.depth = parent.depth + 1;
+  next_left.label = result.label_left;
   next_left.is_leaf = true;
-  next_right.depth = nodes_[node_id].depth + 1;
-  next_right.label = best_result.label_right;
+  next_right.id = result.id_right;
+  next_right.depth = parent.depth + 1;
+  next_right.label = result.label_right;
   next_right.is_leaf = true;
 
-  auto features = data.GetColumn(nodes_[node_id].feature_index);
-  for(unsigned int i = 0; i < nodes_[node_id].samples.size(); ++i) {
-    unsigned int sample_idx = nodes_[node_id].samples[i];
-    if (features[sample_idx].value < nodes_[node_id].threshold) {
+  auto features = data.GetColumn(parent.feature_index);
+  for(unsigned int i = 0; i < parent.samples.size(); ++i) {
+    unsigned int sample_idx = parent.samples[i];
+    if (features[sample_idx].value < parent.threshold) {
       next_left.samples.push_back(sample_idx);
     }
     else {
@@ -121,17 +131,12 @@ void Tree::ProcessNode(const DataMatrix& data,
 
   // After split is decided and samples divided to the children, no longer need
   // to retain the sample indices
-  nodes_[node_id].samples.clear();
+  parent.samples.clear();
 
   // Link parent and childrens
-  nodes_[node_id].left_id = left_id;
-  nodes_[node_id].right_id = right_id;
+  parent.left_id = result.id_left;
+  parent.right_id = result.id_right;
   //LOG(INFO) << "Node " << nodes_[node_id].id << "'s left: " << nodes_[node_id].left_id << "; right: " << nodes_[node_id].right_id;
-
-  processing_queue_.push(left_id);
-  processing_queue_.push(right_id);
-
-  //LOG(INFO) << "Done processing node " << node_id;
 };
 
 Tree::SplitResult Tree::FindBestSplit(const Histogram& histogram) const {
