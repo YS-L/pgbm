@@ -45,5 +45,5 @@ TEST(BoosterTest, SUSY) {
 
   printf("SUSY validation accuracy: %.6f\n", score);
 
-  ASSERT_NEAR(0.754, score, 1e-6);
+  ASSERT_NEAR(0.765, score, 1e-6);
 };

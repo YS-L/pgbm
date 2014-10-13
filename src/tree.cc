@@ -9,7 +9,8 @@
 
 Tree::Tree(unsigned int max_depth, unsigned int n_bins, unsigned int n_splits):
   max_depth_(max_depth), n_bins_(n_bins), n_splits_(n_splits),
-  current_node_id_(0)
+  current_node_id_(0),
+  current_depth_(0)
 {
 };
 
@@ -19,9 +20,9 @@ void Tree::Train(const DataMatrix& data) {
 
 void Tree::Train(const DataMatrix& data, const std::vector<double>& targets) {
   InitializeRootNode(data);
-  while (!processing_queue_.empty()) {
-    ProcessNode(data, targets, processing_queue_.front());
-    processing_queue_.pop();
+  while (current_depth_ < max_depth_) {
+    ProcessCurrentNodes(data, targets);
+    current_depth_ += 1;
   }
 };
 
@@ -50,53 +51,57 @@ void Tree::InitializeRootNode(const DataMatrix& data) {
   for (unsigned int i = 0; i < data.Size(); ++i) {
     root.samples.push_back(i);
   }
-  processing_queue_.push(root_id);
+  current_queue_.push_back(root_id);
 };
 
-void Tree::ProcessNode(const DataMatrix& data,
-    const std::vector<double>& targets, unsigned int node_id) {
+void Tree::ProcessCurrentNodes(const DataMatrix& data, const std::vector<double>& targets) {
 
-  //LOG(INFO) << "Processing node " << node_id << " (" << nodes_[node_id].id << ")";
-
-  // TODO: Currently always split until reaching the required depth
-  if (nodes_[node_id].depth >= max_depth_) {
-    //LOG(INFO) << "Done by depth";
-    return;
-  }
-
-  // Find the best splits for current node among all the features
-  SplitResult best_result;
-  best_result.can_split = false;
-  best_result.cost = std::numeric_limits<double>::max();
-  std::vector<unsigned int> feature_keys = data.GetFeatureKeys();
+  // Histograms are stored by features. In the distributed version, a message
+  // completely covers a feature (over multiple nodes), so that the number of
+  // messages sent does not grow with tree depth.
+  // histograms[x][y]: Histogram for feature x at node y
+  const std::vector<unsigned int> feature_keys = data.GetFeatureKeys();
+  std::vector<std::vector<Histogram> > histograms(feature_keys.size(),
+      std::vector<Histogram>(current_queue_.size(), Histogram(n_bins_)));
   for (unsigned int i = 0; i < feature_keys.size(); ++i) {
-    //LOG(INFO) << "Computing histogram for feature " << i;
     unsigned int fkey = feature_keys[i];
     const auto& column = data.GetColumn(fkey);
-    auto histogram = ComputeHistogram(column, targets, nodes_[node_id].samples);
-    SplitResult result = FindBestSplit(histogram);
-    if (result.can_split && result.cost < best_result.cost) {
-      // TODO: Options to check for number of observations per leaf, etc. Or
-      // check for these within FindBestSplit using the histogram?
-      best_result = result;
-      best_result.feature_index = i;
+    for (unsigned int j = 0; j < current_queue_.size(); ++j) {
+      histograms[i][j] = ComputeHistogram(column, targets, nodes_[current_queue_[j]].samples);
     }
   }
 
-  if (!best_result.can_split) {
-    return;
+  next_queue_.clear();
+
+  for (unsigned int j = 0; j < current_queue_.size(); ++j) {
+    SplitResult best_result;
+    best_result.can_split = false;
+    best_result.cost = std::numeric_limits<double>::max();
+    for (unsigned int i = 0; i < feature_keys.size(); ++i) {
+      SplitResult result = FindBestSplit(histograms[i][j]);
+      if (result.can_split && result.cost < best_result.cost) {
+        // TODO: Options to check for number of observations per leaf, etc. Or
+        // check for these within FindBestSplit using the histogram?
+        best_result = result;
+        best_result.feature_index = i;
+      }
+    }
+    if (!best_result.can_split) {
+      return;
+    }
+    best_result.id_left = current_node_id_++;
+    best_result.id_right = current_node_id_++;
+
+    //LOG(INFO) << "Node [" << current_queue_[j] <<"]: Making a split on feature " << best_result.feature_index << " with threshold " << best_result.threshold << "; label_left: " << best_result.label_left << " label_right: " << best_result.label_right;
+
+    FinalizeAndSplitNode(data, best_result, nodes_[current_queue_[j]]);
+
+    //LOG(INFO) << "Done processing node " << current_queue_[j];
+    next_queue_.push_back(best_result.id_left);
+    next_queue_.push_back(best_result.id_right);
   }
 
-  best_result.id_left = current_node_id_++;
-  best_result.id_right = current_node_id_++;
-
-  //LOG(INFO) << "Node [" << node_id <<"]: Making a split on feature " << best_result.feature_index << " with threshold " << best_result.threshold << "; label_left: " << best_result.label_left << " label_right: " << best_result.label_right;
-
-  FinalizeAndSplitNode(data, best_result, nodes_[node_id]);
-
-  //LOG(INFO) << "Done processing node " << node_id;
-  processing_queue_.push(best_result.id_left);
-  processing_queue_.push(best_result.id_right);
+  current_queue_.swap(next_queue_);
 };
 
 void Tree::FinalizeAndSplitNode(const DataMatrix& data, const SplitResult& result, Node& parent) {
@@ -149,7 +154,7 @@ Tree::SplitResult Tree::FindBestSplit(const Histogram& histogram) const {
 
   // Possible that the histogram is empty because of no sample at all (TO CHECK)
   if (histogram.get_num_bins() == 0) {
-	return best_split;
+    return best_split;
   }
 
   std::vector<double> candidates = histogram.Uniform(n_splits_);

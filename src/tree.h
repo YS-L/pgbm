@@ -55,13 +55,12 @@ private:
     double label_right;
     double label_self; // When can_split is false
     bool can_split;
-	unsigned int id_left;
-	unsigned int id_right;
-	unsigned int feature_index;
+    unsigned int id_left;
+    unsigned int id_right;
+    unsigned int feature_index;
   };
 
-  void ProcessNode(const DataMatrix& data, const std::vector<double>& targets,
-      unsigned int node_id);
+  void ProcessCurrentNodes(const DataMatrix& data, const std::vector<double>& targets);
   void InitializeRootNode(const DataMatrix& data);
   void FinalizeAndSplitNode(const DataMatrix& data, const SplitResult& result, Node& parent);
   SplitResult FindBestSplit(const Histogram& histogram) const;
@@ -76,7 +75,9 @@ private:
   unsigned int n_splits_;
   std::vector<Node> nodes_;
   unsigned int current_node_id_;
-  std::queue<unsigned int> processing_queue_;
+  std::vector<unsigned int> current_queue_;
+  std::vector<unsigned int> next_queue_;
+  unsigned int current_depth_;
 };
 
 #endif

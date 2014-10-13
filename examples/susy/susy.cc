@@ -9,7 +9,7 @@ int main(int argc, char** argv) {
   LOG(INFO) << "Susy started";
 
   DataMatrix data_train;
-  data_train.Load("../../Scripts/susy/susy.svmlight.train.5k");
+  data_train.Load("../../Scripts/susy/susy.svmlight.train.50k");
   LOG(INFO) << "Training data size: " << data_train.Size()
             << " x "
             << data_train.Dimension();
@@ -18,7 +18,7 @@ int main(int argc, char** argv) {
   booster.Train(data_train);
 
   DataMatrix data_eval;
-  data_eval.Load("../../Scripts/susy/susy.svmlight.eval.5k");
+  data_eval.Load("../../Scripts/susy/susy.svmlight.eval.50k");
   LOG(INFO) << "Training data size: " << data_eval.Size()
             << " x "
             << data_eval.Dimension();
