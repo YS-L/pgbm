@@ -6,6 +6,8 @@
 
 #include <vector>
 #include <queue>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
 
 class Tree {
 
@@ -41,14 +43,23 @@ public:
 
 private:
 
-  struct CandidateInfo {
-    Histogram histogram;
-    unsigned int node_id;
+  class HistogramsPerFeature {
+  public:
+    std::vector<Histogram> histograms;
     unsigned int feature_index;
+
+  private:
+    friend class boost::serialization::access;
+    template<class Archive>
+    void serialize(Archive & ar, const unsigned int version) {
+      ar & histograms;
+      ar & feature_index;
+    }
   };
 
   // Result of splitting on a single feature optimally
-  struct SplitResult {
+  class SplitResult {
+  public:
     double cost;
     double threshold;
     double label_left;
@@ -58,6 +69,21 @@ private:
     unsigned int id_left;
     unsigned int id_right;
     unsigned int feature_index;
+
+  private:
+    friend class boost::serialization::access;
+    template<class Archive>
+    void serialize(Archive & ar, const unsigned int version) {
+      ar & cost;
+      ar & threshold;
+	  ar & label_left;
+	  ar & label_right;
+	  ar & label_self;
+	  ar & can_split;
+	  ar & id_left;
+	  ar & id_right;
+	  ar & feature_index;
+    }
   };
 
   void ProcessCurrentNodes(const DataMatrix& data, const std::vector<double>& targets);
@@ -69,6 +95,13 @@ private:
       const std::vector<double>& targets,
       const std::vector<unsigned int>& samples) const;
   double TraverseTree(const DataMatrix::SamplePoint& sample) const;
+
+  void MPI_PullHistograms(std::vector<std::vector<Histogram> >& histograms) const;
+  void MPI_PushHistograms(const std::vector<std::vector<Histogram> >& histograms) const;
+
+  void MPI_PushBestSplits(const std::vector<SplitResult>& histograms) const;
+  void MPI_PullBestSplits(std::vector<SplitResult>& best_splits_by_nodes) const;
+  int MPI_TagBestSplits() const;
 
   unsigned int max_depth_;
   unsigned int n_bins_;

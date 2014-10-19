@@ -1,5 +1,6 @@
-#include <boost/mpi/environment.hpp>
-#include <boost/mpi/communicator.hpp>
+#include <boost/mpi.hpp>
+
+namespace mpi = boost::mpi;
 
 class MPIHandle
 {
@@ -9,8 +10,9 @@ class MPIHandle
                                  // Instantiated on first use.
       return instance;
     }
-    boost::mpi::environment env;
-    boost::mpi::communicator world;
+
+    mpi::environment env;
+    mpi::communicator world;
 
   private:
     MPIHandle() {};

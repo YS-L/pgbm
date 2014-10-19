@@ -3,24 +3,44 @@
 
 #include <vector>
 #include <utility>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
 
 class Histogram {
 
 public:
 
-  Histogram(unsigned int num_bins);
+  Histogram(unsigned int num_bins=10);
 
-  struct BinVal {
+  class BinVal {
+  public:
     double m;
     double y;
+
+  private:
+    friend class boost::serialization::access;
+    template<class Archive>
+    void serialize(Archive & ar, const unsigned int version) {
+      ar & m;
+      ar & y;
+    }
   };
 
-  struct Bin {
+  class Bin {
+  public:
     double p;
     BinVal val;
 
     bool operator<(const Bin& rhs) const {
       return p < rhs.p;
+    }
+
+  private:
+    friend class boost::serialization::access;
+    template<class Archive>
+    void serialize(Archive & ar, const unsigned int version) {
+      ar & p;
+      ar & val;
     }
   };
 
@@ -39,6 +59,16 @@ public:
   }
 
 private:
+
+  friend class boost::serialization::access;
+  template<class Archive>
+  void serialize(Archive & ar, const unsigned int version) {
+    ar & max_num_bins_;
+    ar & bins_;
+    ar & dirty_;
+    ar & cumsums_;
+  }
+
   typedef std::vector<Bin> HistogramType;
   typedef HistogramType::iterator HistogramTypeIter;
   typedef HistogramType::const_iterator HistogramTypeConstIter;

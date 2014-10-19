@@ -63,29 +63,78 @@ void Tree::ProcessCurrentNodes(const DataMatrix& data, const std::vector<double>
   const std::vector<unsigned int> feature_keys = data.GetFeatureKeys();
   std::vector<std::vector<Histogram> > histograms(feature_keys.size(),
       std::vector<Histogram>(current_queue_.size(), Histogram(n_bins_)));
+
+  mpi::environment& env = MPIHandle::Get().env;
+  mpi::communicator& world = MPIHandle::Get().world;
+
+  //LOG(INFO) << "Rank: " << world.rank();
+  //LOG(INFO) << "Environment intialized: " << env.initialized();
+
+  // In case of slaves
+  int total_reqs_push_histograms = histograms.size();
+  mpi::request reqs_push_histograms[total_reqs_push_histograms];
+  std::vector<HistogramsPerFeature> messages(total_reqs_push_histograms);
+
   for (unsigned int i = 0; i < feature_keys.size(); ++i) {
     unsigned int fkey = feature_keys[i];
     const auto& column = data.GetColumn(fkey);
     for (unsigned int j = 0; j < current_queue_.size(); ++j) {
       histograms[i][j] = ComputeHistogram(column, targets, nodes_[current_queue_[j]].samples);
     }
+    messages[i].histograms = histograms[i];
+    messages[i].feature_index = i; // TODO: i or fkey?
+    if (world.rank() >= 1) {
+      int tag = (world.rank()-1)*feature_keys.size() + i;
+      //LOG(INFO) << "Push tag: " << tag;
+      reqs_push_histograms[i] = world.isend(0, tag, messages[i]);
+      // TODO: Need to run a dummy test() to kick start the process?
+    }
+  }
+
+  if (world.rank() == 0 && world.size() > 1) {
+    LOG(INFO) << "Pulling";
+    MPI_PullHistograms(histograms);
+  }
+  else if (world.rank() >= 1) {
+    LOG(INFO) << "Finalize pushing";
+    mpi::wait_all(reqs_push_histograms, reqs_push_histograms + total_reqs_push_histograms);
+    LOG(INFO) << "Pushed all histograms";
   }
 
   next_queue_.clear();
 
-  for (unsigned int j = 0; j < current_queue_.size(); ++j) {
-    SplitResult best_result;
-    best_result.can_split = false;
-    best_result.cost = std::numeric_limits<double>::max();
-    for (unsigned int i = 0; i < feature_keys.size(); ++i) {
-      SplitResult result = FindBestSplit(histograms[i][j]);
-      if (result.can_split && result.cost < best_result.cost) {
-        // TODO: Options to check for number of observations per leaf, etc. Or
-        // check for these within FindBestSplit using the histogram?
-        best_result = result;
-        best_result.feature_index = i;
+  // This way ordering of nodes in the next processing queue is defined by the
+  // master process.
+  std::vector<SplitResult> best_splits_by_nodes(current_queue_.size());
+
+  if ( world.rank() == 0 ) {
+    for (unsigned int j = 0; j < current_queue_.size(); ++j) {
+      SplitResult best_result;
+      best_result.can_split = false;
+      best_result.cost = std::numeric_limits<double>::max();
+      for (unsigned int i = 0; i < feature_keys.size(); ++i) {
+        SplitResult result = FindBestSplit(histograms[i][j]);
+        if (result.can_split && result.cost < best_result.cost) {
+          // TODO: Options to check for number of observations per leaf, etc. Or
+          // check for these within FindBestSplit using the histogram?
+          best_result = result;
+          best_result.feature_index = i;
+        }
       }
+      // TODO: Make a ref?
+      best_splits_by_nodes[j] = best_result;
     }
+    MPI_PushBestSplits(best_splits_by_nodes);
+  }
+  else {
+    LOG(INFO) << "Receiving split results...";
+    MPI_PullBestSplits(best_splits_by_nodes);
+  }
+
+  for (unsigned int j = 0; j < current_queue_.size(); ++j) {
+
+    SplitResult& best_result = best_splits_by_nodes[j];
+
     if (!best_result.can_split) {
       return;
     }
@@ -102,6 +151,63 @@ void Tree::ProcessCurrentNodes(const DataMatrix& data, const std::vector<double>
   }
 
   current_queue_.swap(next_queue_);
+};
+
+void Tree::MPI_PullHistograms(std::vector<std::vector<Histogram> >& histograms) const {
+  // TODO: or pass in env and world?
+  mpi::environment& env = MPIHandle::Get().env;
+  mpi::communicator& world = MPIHandle::Get().world;
+  int total_reqs = (world.size()-1) * histograms.size();
+  //LOG(INFO) << "MPI_PullHistograms: # total reqs: " << total_reqs;
+  mpi::request reqs[total_reqs];
+  std::vector<HistogramsPerFeature> messages(total_reqs);
+  for (unsigned int i = 0; i < histograms.size(); ++i) {
+    for (int k = 1; k < world.size(); ++k) {
+      int cur_idx = i*(world.size()-1) + (k-1);
+      int tag = (k-1)*histograms.size() + i;
+      //LOG(INFO) << "MPI_PullHistograms: Current message index to pull: " << cur_idx;
+      reqs[cur_idx] = world.irecv(k, tag, messages[cur_idx]);
+    }
+  }
+  LOG(INFO) << "MPI_PullHistograms: Start waiting for slave histograms";
+  mpi::wait_all(reqs, reqs + total_reqs);
+  LOG(INFO) << "MPI_PulHistograms: Finished waiting in pull";
+  for (int i = 0; i < total_reqs; i++) {
+    unsigned int feature_index = messages[i].feature_index;
+    std::vector<Histogram>& h = messages[i].histograms;
+    for (unsigned int j = 0; j < h.size(); ++j) {
+      histograms[feature_index][j].Merge(h[j]);
+    }
+  }
+};
+
+void Tree::MPI_PushHistograms(const std::vector<std::vector<Histogram> >& histograms) const {
+  mpi::environment& env = MPIHandle::Get().env;
+  mpi::communicator& world = MPIHandle::Get().world;
+};
+
+void Tree::MPI_PushBestSplits(const std::vector<SplitResult>& best_splits_by_nodes) const {
+  LOG(INFO) << "MPI_PushBestSplits: Pushing best splits";
+  mpi::environment& env = MPIHandle::Get().env;
+  mpi::communicator& world = MPIHandle::Get().world;
+  mpi::request reqs[world.size()-1];
+  for (int k = 1; k < world.size(); ++k) {
+    reqs[k-1] = world.isend(k, MPI_TagBestSplits(), best_splits_by_nodes);
+  }
+  mpi::wait_all(reqs, reqs + world.size() - 1);
+  LOG(INFO) << "MPI_PushBestSplits: Pushes finalized";
+};
+
+void Tree::MPI_PullBestSplits(std::vector<SplitResult>& best_splits_by_nodes) const {
+  LOG(INFO) << "MPI_PullBestSplits: Pulling best splits";
+  mpi::environment& env = MPIHandle::Get().env;
+  mpi::communicator& world = MPIHandle::Get().world;
+  world.recv(0, MPI_TagBestSplits(), best_splits_by_nodes);
+  LOG(INFO) << "MPI_PullBestSplits: Pull finalized";
+};
+
+int Tree::MPI_TagBestSplits() const {
+  return 1001;
 };
 
 void Tree::FinalizeAndSplitNode(const DataMatrix& data, const SplitResult& result, Node& parent) {
