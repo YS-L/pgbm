@@ -1,15 +1,27 @@
 #include "data.h"
 #include "boosting.h"
 #include "eval.h"
+#include "mpi_util.h"
 
+#include <cstdlib>
+#include <string>
 #include <glog/logging.h>
 
 int main(int argc, char** argv) {
 
   LOG(INFO) << "Susy started";
 
+  mpi::environment& env = MPIHandle::Get().env;
+  mpi::communicator& world = MPIHandle::Get().world;
+
+  char filename_data_train[1000];
+  sprintf(filename_data_train,
+      "../../Scripts/susy/susy.svmlight.train.50k.p%d", world.rank()+1);
+
+  //char filename_data_eval[1000];
+
   DataMatrix data_train;
-  data_train.Load("../../Scripts/susy/susy.svmlight.train.50k");
+  data_train.Load(filename_data_train);
   LOG(INFO) << "Training data size: " << data_train.Size()
             << " x "
             << data_train.Dimension();
@@ -27,7 +39,7 @@ int main(int argc, char** argv) {
   double score = metric.Evaluate(predictions, data_eval);
 
   booster.Describe();
-  printf("Evaluation score: %.6f\n", score);
+  printf("[Rank %d] Evaluation score: %.6f\n", world.rank(), score);
 
   return 0;
 };
