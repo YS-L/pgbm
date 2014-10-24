@@ -26,14 +26,15 @@ int main(int argc, char** argv) {
             << " x "
             << data_train.Dimension();
 
-  Booster booster(20, 0.05, 7, 80, 80, 1);
-  booster.Train(data_train);
-
   DataMatrix data_eval;
   data_eval.Load("../../Scripts/susy/susy.svmlight.eval.50k");
   LOG(INFO) << "Training data size: " << data_eval.Size()
             << " x "
             << data_eval.Dimension();
+
+  Booster booster(5, 0.05, 7, 80, 80, 1);
+  booster.Train(data_train, data_eval);
+
   std::vector<double> predictions = booster.Predict(data_eval);
   Accuracy metric;
   double score = metric.Evaluate(predictions, data_eval);
