@@ -40,3 +40,22 @@ TEST(DataTest, UpdateTargets) {
   d.SetTargets(new_targets);
   ASSERT_EQ(new_targets, d.GetTargets());
 };
+
+TEST(DataTest, LoadIrisPartial) {
+  DataMatrix d;
+
+  // Load only 50 samples
+  ASSERT_EQ(0, d.Load(IRIS, 0, 50));
+  ASSERT_EQ(4, (int)d.Dimension());
+  ASSERT_EQ(50, (int)d.Size());
+
+  // Skip 1 row, check that 2nd row becomes the 1st row
+  ASSERT_EQ(0, d.Load(IRIS, 1, 50));
+  ASSERT_EQ(4, (int)d.Dimension());
+  ASSERT_EQ(50, (int)d.Size());
+
+  auto row = d.GetRow(0);
+  ASSERT_EQ(4, (int)row.features.size());
+  ASSERT_NEAR(4.9, row.features.at(0), 0.001);
+  ASSERT_NEAR(3.0, row.features.at(1), 0.001);
+};

@@ -10,7 +10,14 @@
 
 DataMatrix::DataMatrix() { }
 
-int DataMatrix::Load(const char *filename) {
+/* Load data stored in svmlight format
+ *
+ * @param[in] filename Data file's name
+ * @param[in] skips Number of rows to skip from the beginning, default is 0.
+ * @param[in] max_num_samples Number of samples to load if > -1 (default).
+ * @return Returns 0 on success.
+ */
+int DataMatrix::Load(const char *filename, int skips, int max_num_samples) {
   // Column wise storage
   column_data_.clear();
   // Row wise storage
@@ -24,10 +31,18 @@ int DataMatrix::Load(const char *filename) {
   }
 
   int sample_idx = 0;
+  int num_line_read = 0;
   char buffer[LINE_BUFFER];
   char buffer_ftoken[LINE_BUFFER];
 
+
   while (fgets(buffer, LINE_BUFFER, fp)) {
+
+    num_line_read += 1;
+
+    if (num_line_read <= skips) {
+      continue;
+    }
 
     buffer[strlen(buffer)-1] = '\0';
     //printf("Read line #%d\n", sample_idx);
@@ -71,6 +86,10 @@ int DataMatrix::Load(const char *filename) {
       //printf ("%s\n",pch);
     }
     sample_idx += 1;
+
+    if (max_num_samples >= 0 && sample_idx >= max_num_samples) {
+      break;
+    }
   }
   fclose(fp);
   return 0;

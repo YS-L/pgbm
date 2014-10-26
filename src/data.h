@@ -18,7 +18,7 @@ public:
 		std::map<unsigned int, double> features;
 	};
 
-	int Load(const char *filename);
+	int Load(const char *filename, int skips=0, int max_num_samples=-1);
 	void SetTargets(const std::vector<double>& targets);
 	const SamplePoint& GetRow(unsigned int index) const;
 	const std::vector<SamplePoint>& GetRows() const;
