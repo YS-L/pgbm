@@ -6,8 +6,19 @@
 #include <cstdlib>
 #include <string>
 #include <glog/logging.h>
+#include <gflags/gflags.h>
+
+//DEFINE_bool(benchmark_build_tree, false, "To benchmark time required for building a tree");
+DEFINE_int32(num_trees, 5, "Number of trees to build, i.e. number of iterations in boosting");
+DEFINE_double(shrinkage, 0.05, "Shrinkage parameter");
+DEFINE_int32(num_samples, 500, "Number of samples to train on in terms of thousands");
+DEFINE_int32(max_depth, 7, "Maximum level of tree depth");
+DEFINE_int32(bin_size, 80, "Number of bins to use in histograms");
+DEFINE_int32(num_split_candidates, 80, "Number of candidate interpolation points to consider for each split");
 
 int main(int argc, char** argv) {
+
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   LOG(INFO) << "Susy started";
 
@@ -15,10 +26,11 @@ int main(int argc, char** argv) {
   mpi::communicator& world = MPIHandle::Get().world;
 
   char filename_data_train[1000];
-  //char filename_data_eval[1000];
+  char filename_data_validate[1000];
   sprintf(filename_data_train, "../../Scripts/susy/susy.svmlight.train.4500k");
+  sprintf(filename_data_validate, "../../Scripts/susy/susy.svmlight.eval.50k");
 
-  int num_k_total_samples = 1000;
+  int num_k_total_samples = FLAGS_num_samples;
   int num_per_node = (int)((float)num_k_total_samples*1000 / world.size());
   int num_skips = world.rank() * num_per_node;
 
@@ -32,12 +44,20 @@ int main(int argc, char** argv) {
             << data_train.Dimension();
 
   DataMatrix data_eval;
-  data_eval.Load("../../Scripts/susy/susy.svmlight.eval.50k");
+  data_eval.Load(filename_data_validate);
   LOG(INFO) << "Validation data size: " << data_eval.Size()
             << " x "
             << data_eval.Dimension();
 
-  Booster booster(5, 0.05, 7, 80, 80, 1);
+  Booster booster(
+      FLAGS_num_trees,
+      FLAGS_shrinkage,
+      FLAGS_max_depth,
+      FLAGS_bin_size,
+      FLAGS_num_split_candidates,
+      1
+  );
+
   booster.Train(data_train, data_eval);
 
   std::vector<double> predictions = booster.Predict(data_eval);
