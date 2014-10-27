@@ -7,6 +7,8 @@
 #include <string>
 #include <glog/logging.h>
 #include <gflags/gflags.h>
+// TODO: Move somewhere else?
+#include <boost/mpi/timer.hpp>
 
 //DEFINE_bool(benchmark_build_tree, false, "To benchmark time required for building a tree");
 DEFINE_int32(num_trees, 5, "Number of trees to build, i.e. number of iterations in boosting");
@@ -49,6 +51,9 @@ int main(int argc, char** argv) {
             << " x "
             << data_eval.Dimension();
 
+  world.barrier();
+  boost::mpi::timer timer;
+
   Booster booster(
       FLAGS_num_trees,
       FLAGS_shrinkage,
@@ -60,12 +65,21 @@ int main(int argc, char** argv) {
 
   booster.Train(data_train, data_eval);
 
+  world.barrier();
+
+  if ( world.rank() == 0 ) {
+    printf("STATS elapsed_time_training %f\n", timer.elapsed());
+  }
+
   std::vector<double> predictions = booster.Predict(data_eval);
   Accuracy metric;
   double score = metric.Evaluate(predictions, data_eval);
 
-  booster.Describe();
-  printf("[Rank %d] Evaluation score: %.6f\n", world.rank(), score);
+  if ( world.rank() == 0 ) {
+    booster.Describe();
+    printf("[Rank %d] Validation score: %.6f\n", world.rank(), score);
+    printf("STATS validation_score %f\n", score);
+  }
 
   return 0;
 };
