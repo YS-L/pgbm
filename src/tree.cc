@@ -151,6 +151,8 @@ void Tree::ProcessCurrentNodes(const DataMatrix& data, const std::vector<double>
   }
 
   current_queue_.swap(next_queue_);
+
+  LOG(INFO) << "ProcessCurrentNodes: Done depth " << current_depth_;
 };
 
 void Tree::MPI_PullHistograms(std::vector<std::vector<Histogram> >& histograms) const {
