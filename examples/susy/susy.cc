@@ -17,6 +17,7 @@ DEFINE_int32(num_samples, 500, "Number of samples to train on in terms of thousa
 DEFINE_int32(max_depth, 7, "Maximum level of tree depth");
 DEFINE_int32(bin_size, 80, "Number of bins to use in histograms");
 DEFINE_int32(num_split_candidates, 80, "Number of candidate interpolation points to consider for each split");
+DEFINE_int32(monitor_frequency, 1, "Evaluate current model on the monitoring dataset every this number of iteration(s); do not monitor if 0");
 
 int main(int argc, char** argv) {
 
@@ -60,7 +61,7 @@ int main(int argc, char** argv) {
       FLAGS_max_depth,
       FLAGS_bin_size,
       FLAGS_num_split_candidates,
-      1
+      FLAGS_monitor_frequency
   );
 
   booster.Train(data_train, data_eval);

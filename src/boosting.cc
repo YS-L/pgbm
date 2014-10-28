@@ -58,7 +58,7 @@ void Booster::Train(const DataMatrix& data, const DataMatrix& data_monitor) {
       UpdateCachedResponse(models_.size()-1, data_monitor, cached_response_monitor_);
     }
     //PEEK_VECTOR(cached_response_, 20);
-    if (i % eval_frequency_ == 0) {
+    if (eval_frequency_ != 0 && i % eval_frequency_ == 0) {
       std::vector<double> predictions;
       loss_function_->Output(cached_response_, predictions);
       double score = metric_->Evaluate(predictions, data);
