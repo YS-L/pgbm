@@ -88,17 +88,18 @@ void Tree::ProcessCurrentNodes(const DataMatrix& data, const std::vector<double>
       //LOG(INFO) << "Push tag: " << tag;
       reqs_push_histograms[i] = world.isend(0, tag, messages[i]);
       // TODO: Need to run a dummy test() to kick start the process?
+      reqs_push_histograms[i].test();
     }
+  }
+  if (world.rank() >= 1) {
+    LOG(INFO) << "Finalize pushing";
+    mpi::wait_all(reqs_push_histograms, reqs_push_histograms + total_reqs_push_histograms);
+    LOG(INFO) << "Pushed all histograms";
   }
 
   if (world.rank() == 0 && world.size() > 1) {
     LOG(INFO) << "Pulling";
     MPI_PullHistograms(histograms);
-  }
-  else if (world.rank() >= 1) {
-    LOG(INFO) << "Finalize pushing";
-    mpi::wait_all(reqs_push_histograms, reqs_push_histograms + total_reqs_push_histograms);
-    LOG(INFO) << "Pushed all histograms";
   }
 
   next_queue_.clear();
@@ -159,6 +160,7 @@ void Tree::MPI_PullHistograms(std::vector<std::vector<Histogram> >& histograms) 
   // TODO: or pass in env and world?
   mpi::environment& env = MPIHandle::Get().env;
   mpi::communicator& world = MPIHandle::Get().world;
+
   int total_reqs = (world.size()-1) * histograms.size();
   //LOG(INFO) << "MPI_PullHistograms: # total reqs: " << total_reqs;
   mpi::request reqs[total_reqs];
@@ -169,6 +171,8 @@ void Tree::MPI_PullHistograms(std::vector<std::vector<Histogram> >& histograms) 
       int tag = (k-1)*histograms.size() + i;
       //LOG(INFO) << "MPI_PullHistograms: Current message index to pull: " << cur_idx;
       reqs[cur_idx] = world.irecv(k, tag, messages[cur_idx]);
+      // TODO: This causes blocking?
+      //reqs[cur_idx].test();
     }
   }
   LOG(INFO) << "MPI_PullHistograms: Start waiting for slave histograms";
@@ -195,6 +199,8 @@ void Tree::MPI_PushBestSplits(const std::vector<SplitResult>& best_splits_by_nod
   mpi::request reqs[world.size()-1];
   for (int k = 1; k < world.size(); ++k) {
     reqs[k-1] = world.isend(k, MPI_TagBestSplits(), best_splits_by_nodes);
+    // TODO: Empty optional and double test()/wait()?
+    reqs[k-1].test();
   }
   mpi::wait_all(reqs, reqs + world.size() - 1);
   LOG(INFO) << "MPI_PushBestSplits: Pushes finalized";
