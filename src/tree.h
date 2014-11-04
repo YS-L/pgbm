@@ -99,7 +99,7 @@ private:
   void MPI_PullHistograms(std::vector<std::vector<Histogram> >& histograms) const;
   void MPI_PushHistograms(const std::vector<std::vector<Histogram> >& histograms) const;
 
-  void MPI_PushBestSplits(const std::vector<SplitResult>& histograms) const;
+  void MPI_PushBestSplits(std::vector<SplitResult>& best_splits_by_nodes) const;
   void MPI_PullBestSplits(std::vector<SplitResult>& best_splits_by_nodes) const;
   int MPI_TagBestSplits() const;
 

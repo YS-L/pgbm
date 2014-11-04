@@ -160,7 +160,6 @@ void Tree::MPI_PullHistograms(std::vector<std::vector<Histogram> >& histograms) 
   // TODO: or pass in env and world?
   mpi::environment& env = MPIHandle::Get().env;
   mpi::communicator& world = MPIHandle::Get().world;
-
   int total_reqs = (world.size()-1) * histograms.size();
   //LOG(INFO) << "MPI_PullHistograms: # total reqs: " << total_reqs;
   mpi::request reqs[total_reqs];
@@ -192,10 +191,11 @@ void Tree::MPI_PushHistograms(const std::vector<std::vector<Histogram> >& histog
   mpi::communicator& world = MPIHandle::Get().world;
 };
 
-void Tree::MPI_PushBestSplits(const std::vector<SplitResult>& best_splits_by_nodes) const {
+void Tree::MPI_PushBestSplits(std::vector<SplitResult>& best_splits_by_nodes) const {
   LOG(INFO) << "MPI_PushBestSplits: Pushing best splits";
   mpi::environment& env = MPIHandle::Get().env;
   mpi::communicator& world = MPIHandle::Get().world;
+  /*
   mpi::request reqs[world.size()-1];
   for (int k = 1; k < world.size(); ++k) {
     reqs[k-1] = world.isend(k, MPI_TagBestSplits(), best_splits_by_nodes);
@@ -203,6 +203,8 @@ void Tree::MPI_PushBestSplits(const std::vector<SplitResult>& best_splits_by_nod
     reqs[k-1].test();
   }
   mpi::wait_all(reqs, reqs + world.size() - 1);
+  */
+  mpi::broadcast(world, best_splits_by_nodes, 0);
   LOG(INFO) << "MPI_PushBestSplits: Pushes finalized";
 };
 
@@ -210,7 +212,10 @@ void Tree::MPI_PullBestSplits(std::vector<SplitResult>& best_splits_by_nodes) co
   LOG(INFO) << "MPI_PullBestSplits: Pulling best splits";
   mpi::environment& env = MPIHandle::Get().env;
   mpi::communicator& world = MPIHandle::Get().world;
+  /*
   world.recv(0, MPI_TagBestSplits(), best_splits_by_nodes);
+  */
+  mpi::broadcast(world, best_splits_by_nodes, 0);
   LOG(INFO) << "MPI_PullBestSplits: Pull finalized";
 };
 
