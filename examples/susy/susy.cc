@@ -2,6 +2,7 @@
 #include "boosting.h"
 #include "eval.h"
 #include "mpi_util.h"
+#include "util.h"
 
 #include <cstdlib>
 #include <string>
@@ -69,7 +70,7 @@ int main(int argc, char** argv) {
   world.barrier();
 
   if ( world.rank() == 0 ) {
-    printf("STATS elapsed_time_training %f\n", timer.elapsed());
+    LOG_STATS("elapsed_time_training", timer.elapsed());
   }
 
   std::vector<double> predictions = booster.Predict(data_eval);
@@ -79,7 +80,7 @@ int main(int argc, char** argv) {
   if ( world.rank() == 0 ) {
     booster.Describe();
     printf("[Rank %d] Validation score: %.6f\n", world.rank(), score);
-    printf("STATS validation_score %f\n", score);
+    LOG_STATS("validation_score", score);
   }
 
   return 0;
