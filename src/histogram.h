@@ -5,6 +5,7 @@
 #include <utility>
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
+#include <boost/mpi/datatype.hpp>
 
 class Histogram {
 
@@ -65,8 +66,6 @@ private:
   void serialize(Archive & ar, const unsigned int version) {
     ar & max_num_bins_;
     ar & bins_;
-    ar & dirty_;
-    ar & cumsums_;
   }
 
   typedef std::vector<Bin> HistogramType;
@@ -81,5 +80,8 @@ private:
   mutable std::vector<BinVal> cumsums_;
 
 };
+
+BOOST_IS_MPI_DATATYPE(Histogram::BinVal);
+BOOST_IS_MPI_DATATYPE(Histogram::Bin);
 
 #endif

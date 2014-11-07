@@ -8,6 +8,7 @@
 #include <queue>
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
+#include <boost/mpi/datatype.hpp>
 
 class Tree {
 
@@ -76,13 +77,13 @@ private:
     void serialize(Archive & ar, const unsigned int version) {
       ar & cost;
       ar & threshold;
-	  ar & label_left;
-	  ar & label_right;
-	  ar & label_self;
-	  ar & can_split;
-	  ar & id_left;
-	  ar & id_right;
-	  ar & feature_index;
+      ar & label_left;
+      ar & label_right;
+      ar & label_self;
+      ar & can_split;
+      ar & id_left;
+      ar & id_right;
+      ar & feature_index;
     }
   };
 
@@ -112,5 +113,7 @@ private:
   std::vector<unsigned int> next_queue_;
   unsigned int current_depth_;
 };
+
+BOOST_IS_MPI_DATATYPE(Tree::SplitResult);
 
 #endif
