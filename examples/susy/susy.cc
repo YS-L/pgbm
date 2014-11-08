@@ -19,6 +19,7 @@ DEFINE_int32(max_depth, 7, "Maximum level of tree depth");
 DEFINE_int32(bin_size, 80, "Number of bins to use in histograms");
 DEFINE_int32(num_split_candidates, 80, "Number of candidate interpolation points to consider for each split");
 DEFINE_int32(monitor_frequency, 1, "Evaluate current model on the monitoring dataset every this number of iteration(s); do not monitor if 0");
+DEFINE_bool(pure_master, false, "If set, master process does not do any histogram summarization work");
 
 int main(int argc, char** argv) {
 
@@ -35,8 +36,30 @@ int main(int argc, char** argv) {
   sprintf(filename_data_validate, "../../Scripts/susy/susy.svmlight.eval.50k");
 
   int num_k_total_samples = FLAGS_num_samples;
-  int num_per_node = (int)((float)num_k_total_samples*1000 / world.size());
-  int num_skips = world.rank() * num_per_node;
+  int num_histogram_workers;
+  if (FLAGS_pure_master) {
+    CHECK(world.size() > 1) << "Pure master does not allow np = 1 (somebody has to do the work)";
+    num_histogram_workers = world.size() - 1;
+  }
+  else {
+    // Master will take parts of the data as well
+    num_histogram_workers = world.size();
+  }
+  int num_per_node = (int)((float)num_k_total_samples*1000 / num_histogram_workers);
+
+  int num_skips;
+  if (FLAGS_pure_master) {
+    if (world.rank() == 0) {
+      num_skips = 0;
+      num_per_node = 0;
+    }
+    else {
+      num_skips = (world.rank()-1) * num_per_node;
+    }
+  }
+  else {
+    num_skips = world.rank() * num_per_node;
+  }
 
   LOG(INFO) << "Number of samples per node: " << num_per_node;
   LOG(INFO) << "Skips for this node: " << num_skips;
