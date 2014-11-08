@@ -42,7 +42,7 @@ void Booster::Train(const DataMatrix& data, const DataMatrix& data_monitor) {
       loss_function_->Gradient(data.GetTargets(), cached_response_, gradients);
       //PEEK_VECTOR(gradients, 20)
       LOG(INFO) << "Training a tree";
-      models_.push_back(Tree(max_depth_, num_bins_, num_split_candidates_));
+      models_.push_back(Tree(max_depth_, num_bins_, num_split_candidates_, i));
       models_.back().Train(data, gradients);
 
       // Discard the baseline response used to initiate the gradient

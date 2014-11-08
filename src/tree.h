@@ -35,7 +35,8 @@ public:
     unsigned int depth;
   };
 
-  Tree(unsigned int max_depth=3, unsigned int n_bins=40, unsigned int n_splits=20);
+  Tree(unsigned int max_depth=3, unsigned int n_bins=40,
+      unsigned int n_splits=20, unsigned int current_tree_index=0);
 
   void Train(const DataMatrix& data);
   void Train(const DataMatrix& data, const std::vector<double>& targets);
@@ -112,6 +113,7 @@ private:
   std::vector<unsigned int> current_queue_;
   std::vector<unsigned int> next_queue_;
   unsigned int current_depth_;
+  unsigned int current_tree_index_;
 };
 
 BOOST_IS_MPI_DATATYPE(Tree::SplitResult);

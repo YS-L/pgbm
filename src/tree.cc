@@ -6,11 +6,13 @@
 #include <limits>
 #include <utility>
 #include <glog/logging.h>
+#include <boost/mpi/timer.hpp>
 
-Tree::Tree(unsigned int max_depth, unsigned int n_bins, unsigned int n_splits):
+Tree::Tree(unsigned int max_depth, unsigned int n_bins, unsigned int n_splits, unsigned int current_tree_index):
   max_depth_(max_depth), n_bins_(n_bins), n_splits_(n_splits),
   current_node_id_(0),
-  current_depth_(0)
+  current_depth_(0),
+  current_tree_index_(current_tree_index)
 {
 };
 
@@ -54,6 +56,10 @@ void Tree::InitializeRootNode(const DataMatrix& data) {
   current_queue_.push_back(root_id);
 };
 
+#define PROFILE_TIMER(world, tree, depth, timer) {\
+  printf("PROFILING rank %d tree %d depth %d %s %f\n", world.rank(), tree, depth, #timer, timer.elapsed());\
+};
+
 void Tree::ProcessCurrentNodes(const DataMatrix& data, const std::vector<double>& targets) {
 
   // Histograms are stored by features. In the distributed version, a message
@@ -75,6 +81,8 @@ void Tree::ProcessCurrentNodes(const DataMatrix& data, const std::vector<double>
   mpi::request reqs_push_histograms[total_reqs_push_histograms];
   std::vector<HistogramsPerFeature> messages(total_reqs_push_histograms);
 
+  boost::mpi::timer time_compute_histograms;
+
   for (unsigned int i = 0; i < feature_keys.size(); ++i) {
     unsigned int fkey = feature_keys[i];
     const auto& column = data.GetColumn(fkey);
@@ -91,6 +99,11 @@ void Tree::ProcessCurrentNodes(const DataMatrix& data, const std::vector<double>
       reqs_push_histograms[i].test();
     }
   }
+
+  PROFILE_TIMER(world, current_tree_index_, current_depth_, time_compute_histograms);
+
+  boost::mpi::timer time_communicate_histograms;
+
   if (world.rank() >= 1) {
     LOG(INFO) << "Finalize pushing";
     mpi::wait_all(reqs_push_histograms, reqs_push_histograms + total_reqs_push_histograms);
@@ -102,6 +115,8 @@ void Tree::ProcessCurrentNodes(const DataMatrix& data, const std::vector<double>
     MPI_PullHistograms(histograms);
   }
 
+  PROFILE_TIMER(world, current_tree_index_, current_depth_, time_communicate_histograms);
+
   next_queue_.clear();
 
   // This way ordering of nodes in the next processing queue is defined by the
@@ -109,6 +124,7 @@ void Tree::ProcessCurrentNodes(const DataMatrix& data, const std::vector<double>
   std::vector<SplitResult> best_splits_by_nodes(current_queue_.size());
 
   if ( world.rank() == 0 ) {
+    boost::mpi::timer time_compute_best_splits;
     for (unsigned int j = 0; j < current_queue_.size(); ++j) {
       SplitResult best_result;
       best_result.can_split = false;
@@ -125,13 +141,19 @@ void Tree::ProcessCurrentNodes(const DataMatrix& data, const std::vector<double>
       // TODO: Make a ref?
       best_splits_by_nodes[j] = best_result;
     }
+    PROFILE_TIMER(world, current_tree_index_, current_depth_, time_compute_best_splits);
+    boost::mpi::timer time_send_best_splits;
     MPI_PushBestSplits(best_splits_by_nodes);
+    PROFILE_TIMER(world, current_tree_index_, current_depth_, time_send_best_splits);
   }
   else {
+    boost::mpi::timer time_wait_compute_and_receive_best_splits;
     LOG(INFO) << "Receiving split results...";
     MPI_PullBestSplits(best_splits_by_nodes);
+    PROFILE_TIMER(world, current_tree_index_, current_depth_, time_wait_compute_and_receive_best_splits);
   }
 
+  boost::mpi::timer time_make_next_layer;
   for (unsigned int j = 0; j < current_queue_.size(); ++j) {
 
     SplitResult& best_result = best_splits_by_nodes[j];
@@ -152,6 +174,7 @@ void Tree::ProcessCurrentNodes(const DataMatrix& data, const std::vector<double>
   }
 
   current_queue_.swap(next_queue_);
+  PROFILE_TIMER(world, current_tree_index_, current_depth_, time_make_next_layer);
 
   LOG(INFO) << "ProcessCurrentNodes: Done depth " << current_depth_;
 };

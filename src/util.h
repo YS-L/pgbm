@@ -15,9 +15,9 @@
 };
 
 #define LOG_STATS(key, value) {\
-  std::cout << "STATS " << "-1 " << key << " " << value << std::endl;\
+  std::cout << "STATS " << "rank -1 " << key << " " << value << std::endl;\
 };
 
 #define LOG_STATS_TAGGED(tag, key, value) {\
-  std::cout << "STATS " << tag << " " << key << " " << value << std::endl;\
+  std::cout << "STATS " << "rank " << tag << " " << key << " " << value << std::endl;\
 };
