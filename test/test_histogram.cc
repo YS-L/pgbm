@@ -1,5 +1,6 @@
 #include "gtest/gtest.h"
 #include "histogram.h"
+#include "util.h"
 #include <algorithm>
 #include <vector>
 #include <cstdio>
@@ -11,7 +12,7 @@ TEST(HistogramTest, Update) {
     hist.Update(i, 1);
     ASSERT_EQ(std::min(i, N), hist.get_num_bins());
   }
-  std::vector<Histogram::Bin> bins = hist.get_bins();
+  Vector<Histogram::Bin> bins = hist.get_bins();
   for (unsigned int i = 0; i < bins.size(); ++i) {
     printf("p:%f -> (%f, %f)\n", bins[i].p, bins[i].val.m, bins[i].val.y);
   }
@@ -20,7 +21,7 @@ TEST(HistogramTest, Update) {
 TEST(HistogramTest, BenHaimAppendixA) {
   unsigned int N = 5;
   Histogram hist(N);
-  std::vector<Histogram::Bin> bins;
+  Vector<Histogram::Bin> bins;
   std::vector<int> sequence = {23,19,10,16,36,2,9,32,30,45};
   for (int i = 0; i < 5; ++i) {
     hist.Update(sequence[i], 1);

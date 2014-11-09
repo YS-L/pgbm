@@ -1,6 +1,8 @@
 #ifndef HISTOGRAM_H_
 #define HISTOGRAM_H_
 
+#include "util.h"
+
 #include <vector>
 #include <utility>
 #include <boost/archive/text_oarchive.hpp>
@@ -8,8 +10,6 @@
 #include <boost/serialization/split_member.hpp>
 #include <boost/serialization/array.hpp>
 #include <boost/mpi/datatype.hpp>
-
-
 #include <glog/logging.h>
 
 class Histogram {
@@ -17,6 +17,11 @@ class Histogram {
 public:
 
   Histogram(unsigned int num_bins=10);
+
+  // TODO
+  ~Histogram();
+  //Histogram(Histogram const&) = delete;
+  //Histogram& operator=(Histogram const&) = delete;
 
   class BinVal {
   public:
@@ -60,7 +65,7 @@ public:
     return bins_.size();
   };
 
-  const std::vector<Bin>& get_bins() const {
+  const Vector<Bin>& get_bins() const {
     return bins_;
   }
 
@@ -79,12 +84,11 @@ private:
   void serialize(Archive & ar, const unsigned int version) {
     ar & max_num_bins_;
 
+    // Note that bins_ and bins_.size() are not available during loading
     if (Archive::is_saving::value) {
       bins_pod_size_ = bins_.size();
     }
     ar & bins_pod_size_;
-
-    //LOG(INFO) << "podsize is ----> " << bins_pod_size_;
 
     if (bins_pod_ != 0) {
       delete [] bins_pod_;
@@ -130,7 +134,8 @@ private:
   BOOST_SERIALIZATION_SPLIT_MEMBER();
   */
 
-  typedef std::vector<Bin> HistogramType;
+  //typedef std::vector<Bin> HistogramType;
+  typedef Vector<Bin> HistogramType;
   typedef HistogramType::iterator HistogramTypeIter;
   typedef HistogramType::const_iterator HistogramTypeConstIter;
   void Trim();

@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <vector>
+#include <folly/FBVector.h>
 #include <iostream>
 
 #define PEEK_VECTOR(v, n) {\
@@ -21,3 +22,13 @@
 #define LOG_STATS_TAGGED(tag, key, value) {\
   std::cout << "STATS " << "rank " << tag << " " << key << " " << value << std::endl;\
 };
+
+#define USE_FBVECTOR 0
+
+#if USE_FBVECTOR
+template <typename T>
+using Vector = folly::fbvector<T>;
+#else
+template <typename T>
+using Vector = std::vector<T>;
+#endif

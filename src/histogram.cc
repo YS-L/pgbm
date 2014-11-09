@@ -14,6 +14,12 @@ Histogram::Histogram(unsigned int num_bins):
   dirty_(true),
   cumsums_(num_bins+1) { };
 
+Histogram::~Histogram() {
+  if (bins_pod_ != 0) {
+    //delete [] bins_pod_;
+  }
+};
+
 void Histogram::Update(double x, double y) {
   SyncPodBins();
   BinVal val;
