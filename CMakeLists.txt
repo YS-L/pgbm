@@ -8,19 +8,23 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -Wl,-rpath -Wl,/usr/lib/openmpi
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
-# TODO: How to properly include these two as submodules?
+# For glogs, gflags and folly
+link_directories("/usr/lib")
+include_directories("/usr/include")
+
+# TODO:
+# - How to properly include glog and gflags as submodules? Now retreat gflags
+#   to pre-installed lib since the folly-git package requires that.
+# - Why must full paths be specified for gflags and folly, but not glog?
 
 # glog
 set(MANDATORY_LIBS glog)
 
 # gflags
-add_subdirectory(gflags)
-include_directories("${PROJECT_BINARY_DIR}/gflags/include")
-set(MANDATORY_LIBS "${MANDATORY_LIBS} ${PROJECT_BINARY_DIR}/gflags/lib/libgflags.a")
-# BUt the following does not work, not like glog?
-#find_package (gflags REQUIRED)
-#include_directories (${gflags_INCLUDE_DIR})
-#set(MANDATORY_LIBS "${MANDATORY_LIBS} libgflags.a")
+set(MANDATORY_LIBS "${MANDATORY_LIBS} /usr/lib/libgflags.so")
+
+# folly
+set(MANDATORY_LIBS "${MANDATORY_LIBS} /usr/lib/libfolly.so")
 
 # Boost MPI
 set(Boost_USE_STATIC_LIBS OFF)

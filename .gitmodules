@@ -1,3 +1,0 @@
-[submodule "gflags"]
-	path = gflags
-	url = https://github.com/schuhschuh/gflags.git
