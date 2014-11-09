@@ -5,7 +5,12 @@
 #include <utility>
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
+#include <boost/serialization/split_member.hpp>
+#include <boost/serialization/array.hpp>
 #include <boost/mpi/datatype.hpp>
+
+
+#include <glog/logging.h>
 
 class Histogram {
 
@@ -62,26 +67,89 @@ public:
 private:
 
   friend class boost::serialization::access;
+  /*
   template<class Archive>
   void serialize(Archive & ar, const unsigned int version) {
     ar & max_num_bins_;
     ar & bins_;
   }
+  */
+
+  template<class Archive>
+  void serialize(Archive & ar, const unsigned int version) {
+    ar & max_num_bins_;
+
+    if (Archive::is_saving::value) {
+      bins_pod_size_ = bins_.size();
+    }
+    ar & bins_pod_size_;
+
+    //LOG(INFO) << "podsize is ----> " << bins_pod_size_;
+
+    if (bins_pod_ != 0) {
+      delete [] bins_pod_;
+      bins_pod_ = 0;
+    }
+    bins_pod_ = new Bin[bins_pod_size_];
+
+    if (Archive::is_saving::value) {
+      //LOG(INFO) << "----> Saving archive";
+      for (unsigned int i = 0; i < bins_.size(); ++i) {
+        bins_pod_[i] = bins_[i];
+      }
+    }
+    else {
+      //LOG(INFO) << "----> Loading archive";
+      bins_pending_pod_ = true;
+    }
+    ar & boost::serialization::make_array<Bin>(bins_pod_, bins_pod_size_);
+  }
+
+  /*
+  template<class Archive>
+  void save(Archive & ar, const unsigned int version) const {
+    ar << max_num_bins_;
+    //ar << bins_;
+    bins_pod_size_ = bins_.size();
+    ar << bins_pod_size_;
+    for (unsigned int i = 0; i < bins_.size(); ++i) {
+      bins_pod_[i] = bins_[i];
+    }
+    ar << boost::serialization::make_array<Bin>(bins_pod_, bins_pod_size_);
+  }
+
+  template<class Archive>
+  void load(Archive & ar, const unsigned int version) {
+    ar >> max_num_bins_;
+    //ar >> bins_;
+    bins_pending_pod_ = true;
+    ar >> bins_pod_size_;
+    boost::serialization::array<Bin> tmp_array;
+    ar >> tmp_array;
+  }
+  BOOST_SERIALIZATION_SPLIT_MEMBER();
+  */
 
   typedef std::vector<Bin> HistogramType;
   typedef HistogramType::iterator HistogramTypeIter;
   typedef HistogramType::const_iterator HistogramTypeConstIter;
   void Trim();
   void PrecomputeCumsums() const;
+  void SyncPodBins() const;
 
   unsigned int max_num_bins_;
-  HistogramType bins_;
+  mutable HistogramType bins_;
+  mutable Bin* bins_pod_;
+  mutable unsigned int bins_pod_size_;
+  mutable bool bins_pending_pod_;
   mutable bool dirty_;
   mutable std::vector<BinVal> cumsums_;
 
 };
 
+
 BOOST_IS_MPI_DATATYPE(Histogram::BinVal);
 BOOST_IS_MPI_DATATYPE(Histogram::Bin);
+//BOOST_IS_MPI_DATATYPE(Histogram);
 
 #endif

@@ -9,10 +9,13 @@
 
 Histogram::Histogram(unsigned int num_bins):
   max_num_bins_(num_bins),
+  bins_pod_(0),
+  bins_pending_pod_(false),
   dirty_(true),
   cumsums_(num_bins+1) { };
 
 void Histogram::Update(double x, double y) {
+  SyncPodBins();
   BinVal val;
   val.m = 1;
   val.y = y;
@@ -33,6 +36,7 @@ void Histogram::Update(double x, double y) {
 };
 
 void Histogram::Merge(const Histogram& other) {
+  SyncPodBins();
   for (unsigned int i = 0; i < other.bins_.size(); ++i) {
     bins_.push_back(other.bins_[i]);
   }
@@ -55,6 +59,7 @@ double trapezoid_estimate(double s, double p1, double p2, double v1, double v2) 
 };
 
 Histogram::BinVal Histogram::Interpolate(double x) const {
+  SyncPodBins();
   // TODO: assert the x in between p_min and p_max
   // TODO: For completeness sake, need to handle -ve and +ve infinity, as it2
   // below might hit the boundaries
@@ -122,6 +127,7 @@ Histogram::BinVal Histogram::InterpolateInf() const {
 };
 
 void Histogram::Trim() {
+  SyncPodBins();
   while (bins_.size() > max_num_bins_) {
     // TODO: Handle ties in minimum distance
     double min_dist = std::numeric_limits<double>::max();
@@ -148,6 +154,7 @@ void Histogram::Trim() {
 
 // Implements Algorithm 4 in Ben-Haim-10 paper
 std::vector<double> Histogram::Uniform(int N) const {
+  SyncPodBins();
   // N corresponds to tilde B in the paper
   CHECK(N >= 1) << "Histogram's Uniform routine requires N >= 1";
   //CHECK(bins_.size() >= 2) << "Histogrom does not have enough bins";
@@ -232,4 +239,17 @@ void Histogram::PrecomputeCumsums() const {
   cumsums_[index_inf].m = cumsums_[bins_.size()-1].m + bins_.back().val.m/2.0;
   cumsums_[index_inf].y = cumsums_[bins_.size()-1].y + bins_.back().val.y/2.0;
   dirty_ = false;
+};
+
+void Histogram::SyncPodBins() const {
+  if (bins_pending_pod_) {
+    bins_pending_pod_ = false;
+    dirty_ = true;
+    bins_.clear();
+    bins_.reserve(max_num_bins_+1); // +1 just in case, probably no need
+    for (unsigned int i = 0; i < bins_pod_size_; ++i) {
+      // or directly resize up there?
+      bins_.push_back(bins_pod_[i]);
+    }
+  }
 };
