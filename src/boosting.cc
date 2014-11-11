@@ -5,6 +5,9 @@
 #include <cmath>
 #include <algorithm>
 #include <glog/logging.h>
+#include <gflags/gflags.h>
+
+DEFINE_bool(discard_baseline, true, "If set, discard baseline response after the 0-th iteration.");
 
 Booster::Booster(unsigned int n_iter, double shrinkage, unsigned int max_depth,
     unsigned int num_bins, unsigned int num_split_candidates,
@@ -26,8 +29,9 @@ void Booster::Train(const DataMatrix& data, const DataMatrix& data_monitor) {
 
   // TODO: What if there's a list of monitor datasets (needs to have a
   // DataPointer typedef then)? Or that data is itself data_monitor?
-  double base_response = loss_function_->Baseline(data.GetTargets());
-  double base_response_monitor = loss_function_->Baseline(data_monitor.GetTargets());
+  base_response_ = loss_function_->Baseline(data.GetTargets());
+  // Shouldn't be using this, since this is supposed to be the test set?
+  //double base_response_monitor = loss_function_->Baseline(data_monitor.GetTargets());
 
   //PEEK_VECTOR(cached_response_, 20);
 
@@ -38,9 +42,10 @@ void Booster::Train(const DataMatrix& data, const DataMatrix& data_monitor) {
   for (unsigned int i = 0; i < n_iter_; ++i) {
     //LOG(INFO) << "Boosting iteration " << i;
     if (i == 0) {
-      cached_response_ = std::vector<double>(data.Size(), base_response);
+      cached_response_ = std::vector<double>(data.Size(), base_response_);
       cached_response_monitor_ = std::vector<double>(data_monitor.Size(),
-          base_response_monitor);
+          //base_response_monitor);
+          base_response_);
     }
     else {
       std::vector<double> gradients;
@@ -53,7 +58,7 @@ void Booster::Train(const DataMatrix& data, const DataMatrix& data_monitor) {
       // Discard the baseline response used to initiate the gradient
       // computation (turns out to give the correct / better output)
       // TODO: Refactor this
-      if (i == 1) {
+      if (FLAGS_discard_baseline && i == 1) {
         cached_response_ = std::vector<double>(data.Size(), 0.0);
         cached_response_monitor_ = std::vector<double>(data_monitor.Size(),
             0.0);
@@ -105,7 +110,8 @@ void Booster::UpdateCachedResponse(unsigned int model_index,
 };
 
 std::vector<double> Booster::Predict(const DataMatrix& data) const {
-  std::vector<double> responses(data.Size(), 0.0);
+  std::vector<double> responses(data.Size(),
+      FLAGS_discard_baseline?0.0:base_response_);
   for(unsigned int i = 0; i < models_.size(); ++i) {
     UpdateCachedResponse(i, data, responses);
   }

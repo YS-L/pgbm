@@ -34,6 +34,7 @@ private:
   unsigned int num_bins_;
   unsigned int num_split_candidates_;
   std::vector<Tree> models_;
+  double base_response_;
   std::vector<double> cached_response_;
   std::vector<double> cached_response_monitor_;
   std::shared_ptr<Loss> loss_function_;
