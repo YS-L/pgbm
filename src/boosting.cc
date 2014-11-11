@@ -1,5 +1,6 @@
 #include "boosting.h"
 #include "util.h"
+#include "mpi_util.h"
 
 #include <cmath>
 #include <algorithm>
@@ -29,6 +30,10 @@ void Booster::Train(const DataMatrix& data, const DataMatrix& data_monitor) {
   double base_response_monitor = loss_function_->Baseline(data_monitor.GetTargets());
 
   //PEEK_VECTOR(cached_response_, 20);
+
+  // For printing out rank information in monitor logging
+  mpi::environment& env = MPIHandle::Get().env;
+  mpi::communicator& world = MPIHandle::Get().world;
 
   for (unsigned int i = 0; i < n_iter_; ++i) {
     //LOG(INFO) << "Boosting iteration " << i;
@@ -71,6 +76,13 @@ void Booster::Train(const DataMatrix& data, const DataMatrix& data_monitor) {
       printf(" %.6f", score);
       printf(" %.6f", score_monitor);
       printf("\n");
+
+      // rank iter metric_name train_metric monitor_metric
+      printf("MONITOR %d %d %s %f %f\n",
+          world.rank(),
+          i*eval_frequency_,
+          metric_->Name(),
+          score, score_monitor);
     }
   }
 };
