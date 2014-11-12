@@ -9,15 +9,18 @@
 
 Histogram::Histogram(unsigned int num_bins):
   max_num_bins_(num_bins),
-  bins_pod_(0),
+  //bins_pod_(0),
   bins_pending_pod_(false),
   dirty_(true),
-  cumsums_(num_bins+1) { };
+  cumsums_(num_bins+1) {
+};
 
 Histogram::~Histogram() {
+  /*
   if (bins_pod_ != 0) {
     //delete [] bins_pod_;
   }
+  */
 };
 
 void Histogram::Update(double x, double y) {
@@ -209,6 +212,8 @@ void Histogram::PrecomputeCumsums() const {
   // - cumsums_[i] means summation up to 1/2 of the i-th bin
   // - Last element of cumsums_ sums up valus in all the bins
 
+  SyncPodBins();
+
   // Only recompute when necessary
   if (!dirty_) {
     return;
@@ -249,6 +254,8 @@ void Histogram::PrecomputeCumsums() const {
 
 void Histogram::SyncPodBins() const {
   if (bins_pending_pod_) {
+    LOG(INFO) << "HEY-----> SYNCING POD BINS";
+    throw 1;
     bins_pending_pod_ = false;
     dirty_ = true;
     bins_.clear();

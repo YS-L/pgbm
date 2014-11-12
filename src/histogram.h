@@ -72,14 +72,13 @@ public:
 private:
 
   friend class boost::serialization::access;
-  /*
   template<class Archive>
   void serialize(Archive & ar, const unsigned int version) {
     ar & max_num_bins_;
     ar & bins_;
   }
-  */
 
+  /*
   template<class Archive>
   void serialize(Archive & ar, const unsigned int version) {
     ar & max_num_bins_;
@@ -97,17 +96,24 @@ private:
     bins_pod_ = new Bin[bins_pod_size_];
 
     if (Archive::is_saving::value) {
-      //LOG(INFO) << "----> Saving archive";
       for (unsigned int i = 0; i < bins_.size(); ++i) {
         bins_pod_[i] = bins_[i];
       }
+      LOG(INFO) << "HOY ----> Saving archive: bins_pending_pod: " << bins_pending_pod_;
     }
     else {
-      //LOG(INFO) << "----> Loading archive";
+      //ar & bins_pending_pod_;
+      //bins_pending_pod_ = true;
       bins_pending_pod_ = true;
+      LOG(INFO) << "HEY ----> Loading archive: bins_pending_pod: " << bins_pending_pod_;
     }
+    //ar & bins_pending_pod_;
+    //if (Archive::is_saving::value) {
+      //bins_pending_pod_ = false;
+    //}
     ar & boost::serialization::make_array<Bin>(bins_pod_, bins_pod_size_);
   }
+  */
 
   /*
   template<class Archive>
@@ -116,10 +122,13 @@ private:
     //ar << bins_;
     bins_pod_size_ = bins_.size();
     ar << bins_pod_size_;
-    for (unsigned int i = 0; i < bins_.size(); ++i) {
-      bins_pod_[i] = bins_[i];
+    //for (unsigned int i = 0; i < bins_.size(); ++i) {
+      //bins_pod_[i] = bins_[i];
+    //}
+    //ar << boost::serialization::make_array<Bin>(bins_pod_, bins_pod_size_);
+    for (unsigned int i = 0 ; i < bins_.size(); ++i) {
+      ar << bins_[i];
     }
-    ar << boost::serialization::make_array<Bin>(bins_pod_, bins_pod_size_);
   }
 
   template<class Archive>
@@ -128,13 +137,15 @@ private:
     //ar >> bins_;
     bins_pending_pod_ = true;
     ar >> bins_pod_size_;
-    boost::serialization::array<Bin> tmp_array;
-    ar >> tmp_array;
+    //boost::serialization::array<Bin> tmp_array;
+    //ar >> tmp_array;
+    for (unsigned int i = 0; i < bins_pod_size_; ++i) {
+      ar >> bins_pod_[i];
+    }
   }
   BOOST_SERIALIZATION_SPLIT_MEMBER();
   */
 
-  //typedef std::vector<Bin> HistogramType;
   typedef Vector<Bin> HistogramType;
   typedef HistogramType::iterator HistogramTypeIter;
   typedef HistogramType::const_iterator HistogramTypeConstIter;
@@ -144,7 +155,8 @@ private:
 
   unsigned int max_num_bins_;
   mutable HistogramType bins_;
-  mutable Bin* bins_pod_;
+  //mutable Bin* bins_pod_;
+  boost::array<Bin, 1> bins_pod_;
   mutable unsigned int bins_pod_size_;
   mutable bool bins_pending_pod_;
   mutable bool dirty_;
