@@ -90,7 +90,7 @@ void Booster::Train(const DataMatrix& data, const DataMatrix& data_monitor) {
       // rank iter metric_name train_metric monitor_metric
       printf("MONITOR %d %d %s %f %f\n",
           world.rank(),
-          i*eval_frequency_,
+          i,
           metric_->Name(),
           score, score_monitor);
     }
