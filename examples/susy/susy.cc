@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
   char filename_data_train[1000];
   char filename_data_validate[1000];
   sprintf(filename_data_train, "../../Scripts/susy/susy.svmlight.train.4500k");
-  sprintf(filename_data_validate, "../../Scripts/susy/susy.svmlight.eval.50k");
+  sprintf(filename_data_validate, "../../Scripts/susy/susy.svmlight.eval.500k");
 
   int num_k_total_samples = FLAGS_num_samples;
   int num_histogram_workers;
@@ -88,7 +88,13 @@ int main(int argc, char** argv) {
       FLAGS_monitor_frequency
   );
 
-  booster.Train(data_train, data_eval);
+  // Only monitor validation data on master process
+  if (world.rank() == 0) {
+    booster.Train(data_train, data_eval);
+  }
+  else {
+    booster.Train(data_train);
+  }
 
   world.barrier();
 

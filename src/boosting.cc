@@ -21,7 +21,8 @@ Booster::Booster(unsigned int n_iter, double shrinkage, unsigned int max_depth,
   eval_frequency_(eval_frequency) { };
 
 void Booster::Train(const DataMatrix& data) {
-  Train(data, data);
+  DataMatrix data_;
+  Train(data, data_);
 };
 
 void Booster::Train(const DataMatrix& data, const DataMatrix& data_monitor) {
@@ -73,9 +74,13 @@ void Booster::Train(const DataMatrix& data, const DataMatrix& data_monitor) {
       loss_function_->Output(cached_response_, predictions);
       double score = metric_->Evaluate(predictions, data);
 
-      std::vector<double> predictions_monitor;
-      loss_function_->Output(cached_response_monitor_, predictions_monitor);
-      double score_monitor = metric_->Evaluate(predictions_monitor, data_monitor);
+      // Evaluation data might be empty
+      double score_monitor = -1.0;
+      if (data_monitor.Size() > 0) {
+        std::vector<double> predictions_monitor;
+        loss_function_->Output(cached_response_monitor_, predictions_monitor);
+        score_monitor = metric_->Evaluate(predictions_monitor, data_monitor);
+      }
 
       printf("[%d] %s", i*eval_frequency_, metric_->Name());
       printf(" %.6f", score);
