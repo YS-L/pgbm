@@ -105,6 +105,8 @@ private:
   void MPI_PullBestSplits(std::vector<SplitResult>& best_splits_by_nodes) const;
   int MPI_TagBestSplits() const;
 
+  void SnapshotHistogram(const Histogram& histogram) const;
+
   unsigned int max_depth_;
   unsigned int n_bins_;
   unsigned int n_splits_;

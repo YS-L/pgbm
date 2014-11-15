@@ -7,6 +7,11 @@
 #include <utility>
 #include <glog/logging.h>
 #include <boost/mpi/timer.hpp>
+#include <gflags/gflags.h>
+
+DEFINE_int32(snapshot_histograms_iter, -1, "DEBUG: Boosting iteration to take a snapshot of the histograms, starting from 1. Ignored if -1.");
+DEFINE_int32(snapshot_histograms_feature, 0, "DEBUG: Snapshot the histograms of this features at some depth, default 0.");
+DEFINE_int32(snapshot_histograms_depth, 0, "DEBUG: Snapshot the histograms of the specified feature of the first queued node at this depth level, default 0");
 
 Tree::Tree(unsigned int max_depth, unsigned int n_bins, unsigned int n_splits, unsigned int current_tree_index):
   max_depth_(max_depth), n_bins_(n_bins), n_splits_(n_splits),
@@ -56,6 +61,16 @@ void Tree::InitializeRootNode(const DataMatrix& data) {
   current_queue_.push_back(root_id);
 };
 
+void Tree::SnapshotHistogram(const Histogram& histogram) const {
+  mpi::communicator& world = MPIHandle::Get().world;
+  Vector<Histogram::Bin> bins = histogram.get_bins();
+  printf("SNAPSHOT_HISTOGRAMS %d ", world.rank());
+  for (unsigned int i = 0; i < bins.size(); ++i) {
+    printf("%f %f %f ", bins[i].p, bins[i].val.m, bins[i].val.y);
+  }
+  printf("\n");
+};
+
 #define PROFILE_TIMER(world, tree, depth, timer) {\
   printf("PROFILING rank %d tree %d depth %d %s %f\n", world.rank(), tree, depth, #timer, timer.elapsed());\
 };
@@ -101,6 +116,11 @@ void Tree::ProcessCurrentNodes(const DataMatrix& data, const std::vector<double>
   }
 
   PROFILE_TIMER(world, current_tree_index_, current_depth_, time_compute_histograms);
+
+  if (FLAGS_snapshot_histograms_iter == (int)current_tree_index_ &&
+      FLAGS_snapshot_histograms_depth == (int)current_depth_) {
+    SnapshotHistogram(histograms[FLAGS_snapshot_histograms_feature][0]);
+  }
 
   boost::mpi::timer time_communicate_histograms;
 
