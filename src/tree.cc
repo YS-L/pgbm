@@ -8,16 +8,18 @@
 #include <glog/logging.h>
 #include <boost/mpi/timer.hpp>
 #include <gflags/gflags.h>
+#include <random>
 
 DEFINE_int32(snapshot_histograms_iter, -1, "DEBUG: Boosting iteration to take a snapshot of the histograms, starting from 1. Ignored if -1.");
 DEFINE_int32(snapshot_histograms_feature, 0, "DEBUG: Snapshot the histograms of this features at some depth, default 0.");
 DEFINE_int32(snapshot_histograms_depth, 0, "DEBUG: Snapshot the histograms of the specified feature of the first queued node at this depth level, default 0");
 
-Tree::Tree(unsigned int max_depth, unsigned int n_bins, unsigned int n_splits, unsigned int current_tree_index):
+Tree::Tree(unsigned int max_depth, unsigned int n_bins, unsigned int n_splits, unsigned int current_tree_index, double subsampling):
   max_depth_(max_depth), n_bins_(n_bins), n_splits_(n_splits),
   current_node_id_(0),
   current_depth_(0),
-  current_tree_index_(current_tree_index)
+  current_tree_index_(current_tree_index),
+  subsampling_(subsampling)
 {
 };
 
@@ -26,6 +28,7 @@ void Tree::Train(const DataMatrix& data) {
 };
 
 void Tree::Train(const DataMatrix& data, const std::vector<double>& targets) {
+  InitializeWantedSampleIndices(data.Size());
   InitializeRootNode(data);
   while (current_depth_ < max_depth_) {
     ProcessCurrentNodes(data, targets);
@@ -55,10 +58,24 @@ void Tree::InitializeRootNode(const DataMatrix& data) {
   root.depth = 0;
   // NOTE: Even if the almost unncessary label is to be filled, it has to be
   // determined by the master later.
-  for (unsigned int i = 0; i < data.Size(); ++i) {
-    root.samples.push_back(i);
+  for (unsigned int i = 0; i < sample_indices_wanted_.size(); ++i) {
+    root.samples.push_back(sample_indices_wanted_[i]);
   }
   current_queue_.push_back(root_id);
+};
+
+// Needs to be called before InitializeRootNode
+void Tree::InitializeWantedSampleIndices(unsigned int n_total_samples) {
+  sample_indices_wanted_.clear();
+  sample_indices_wanted_.reserve(n_total_samples);
+  std::default_random_engine generator;
+  std::uniform_real_distribution<double> distribution(0, 1);
+  for (unsigned int i = 0; i < n_total_samples; ++i) {
+    double g = distribution(generator);
+    if (g < subsampling_) {
+      sample_indices_wanted_.push_back(i);
+    }
+  }
 };
 
 void Tree::SnapshotHistogram(const Histogram& histogram) const {

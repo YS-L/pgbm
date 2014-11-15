@@ -11,13 +11,14 @@ DEFINE_bool(discard_baseline, true, "If set, discard baseline response after the
 
 Booster::Booster(unsigned int n_iter, double shrinkage, unsigned int max_depth,
     unsigned int num_bins, unsigned int num_split_candidates,
-    unsigned int eval_frequency):
+    double subsampling, unsigned int eval_frequency):
   n_iter_(n_iter), shrinkage_(shrinkage),
   max_depth_(max_depth),
   num_bins_(num_bins),
   num_split_candidates_(num_split_candidates),
   loss_function_(new TwoClassLogisticRegression),
   metric_(new Accuracy),
+  subsampling_(subsampling),
   eval_frequency_(eval_frequency) { };
 
 void Booster::Train(const DataMatrix& data) {
@@ -53,7 +54,7 @@ void Booster::Train(const DataMatrix& data, const DataMatrix& data_monitor) {
       loss_function_->Gradient(data.GetTargets(), cached_response_, gradients);
       //PEEK_VECTOR(gradients, 20)
       LOG(INFO) << "Training a tree";
-      models_.push_back(Tree(max_depth_, num_bins_, num_split_candidates_, i));
+      models_.push_back(Tree(max_depth_, num_bins_, num_split_candidates_, i, subsampling_));
       models_.back().Train(data, gradients);
 
       // Discard the baseline response used to initiate the gradient

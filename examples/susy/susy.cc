@@ -20,6 +20,7 @@ DEFINE_int32(bin_size, 80, "Number of bins to use in histograms");
 DEFINE_int32(num_split_candidates, 80, "Number of candidate interpolation points to consider for each split");
 DEFINE_int32(monitor_frequency, 1, "Evaluate current model on the monitoring dataset every this number of iteration(s); do not monitor if 0");
 DEFINE_bool(pure_master, false, "If set, master process does not do any histogram summarization work");
+DEFINE_double(subsampling, 1.0, "Do subsampling of the training samples");
 
 int main(int argc, char** argv) {
 
@@ -85,6 +86,7 @@ int main(int argc, char** argv) {
       FLAGS_max_depth,
       FLAGS_bin_size,
       FLAGS_num_split_candidates,
+      FLAGS_subsampling,
       FLAGS_monitor_frequency
   );
 
