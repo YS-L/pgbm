@@ -4,9 +4,29 @@ Introduction
 An implementation of the Parallel Gradient Boosted Regression Trees algorithm
 [1] for a course project. Parallelization is based on MPI.
 
+Building
+--------
+Dependencies:
+
+* g++ (a version supporting c++11)
+* cmake
+* glogs
+* gflags
+* gtest
+* boost (mpi, serialization)
+
+To build, execute the following:
+
+```bash
+mkdir build
+cd build
+cmake ../
+make
+```
+
 Current status
 --------------
-More to come.
+Not usable yet (duh...). More to come.
 
 
 References

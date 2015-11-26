@@ -8,7 +8,7 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -Wl,-rpath -Wl,/usr/lib/openmpi
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
-# For glogs, gflags and folly
+# For glogs, gflags
 link_directories("/usr/lib")
 include_directories("/usr/include")
 
@@ -22,9 +22,6 @@ set(MANDATORY_LIBS glog)
 
 # gflags
 set(MANDATORY_LIBS "${MANDATORY_LIBS} /usr/lib/libgflags.so")
-
-# folly
-set(MANDATORY_LIBS "${MANDATORY_LIBS} /usr/lib/libfolly.so")
 
 # Boost MPI
 set(Boost_USE_STATIC_LIBS OFF)

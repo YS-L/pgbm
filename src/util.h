@@ -1,6 +1,5 @@
 #include <cstdio>
 #include <vector>
-#include <folly/FBVector.h>
 #include <iostream>
 
 #define PEEK_VECTOR(v, n) {\
@@ -26,6 +25,7 @@
 #define USE_FBVECTOR 0
 
 #if USE_FBVECTOR
+#include <folly/FBVector.h>
 template <typename T>
 using Vector = folly::fbvector<T>;
 #else
